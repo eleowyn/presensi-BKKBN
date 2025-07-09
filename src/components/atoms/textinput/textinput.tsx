@@ -25,11 +25,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 19,
-    fontSize: 13,
 
     borderColor: '#CFCFCF',
     backgroundColor: '#FFFFFF',
 
+    fontSize: 13,
     fontFamily: 'Poppins-Medium',
     alignSelf: 'center',
   },

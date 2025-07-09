@@ -1,12 +1,13 @@
 import {StyleSheet, View} from 'react-native';
 import React from 'react';
-import {TextInput} from '../../components/index';
+import {TextInput, Button, TextTitle} from '../../components/index';
 
 const Login = () => {
   return (
     <View>
+      <TextTitle />
       <TextInput />
-      <TextInput />
+      <Button />
     </View>
   );
 };
