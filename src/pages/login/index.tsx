@@ -1,6 +1,11 @@
 import {StyleSheet, View} from 'react-native';
 import React from 'react';
-import {TextInput, Button, TextTitle} from '../../components/index';
+import {
+  TextInput,
+  Button,
+  TextTitle,
+  Buttonnavigation,
+} from '../../components/index';
 
 const Login = () => {
   return (
@@ -8,6 +13,7 @@ const Login = () => {
       <TextTitle />
       <TextInput />
       <Button />
+      <Buttonnavigation />
     </View>
   );
 };

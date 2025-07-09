@@ -7,6 +7,7 @@ import {
   ActivityLogo,
   CameraLogo,
 } from './atoms/index';
+import {Buttonnavigation} from './molecules/index';
 export {
   Button,
   TextInput,
@@ -15,4 +16,5 @@ export {
   HomeLogo,
   ActivityLogo,
   CameraLogo,
+  Buttonnavigation,
 };

@@ -1,15 +1,26 @@
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View, TouchableOpacity} from 'react-native';
 import React from 'react';
-import AccountLogo from '../../../assets/Account.svg';
+import {AccountIcon, HomeLogo, ActivityLogo, CameraLogo} from '../../atoms';
 
-const buttonnavigation = () => {
+const Buttonnavigation = () => {
   return (
     <View>
-      <Text>buttonnavigation</Text>
+      <TouchableOpacity>
+        <AccountIcon />
+      </TouchableOpacity>
+      <TouchableOpacity>
+        <HomeLogo />
+      </TouchableOpacity>
+      <TouchableOpacity>
+        <ActivityLogo />
+      </TouchableOpacity>
+      <TouchableOpacity>
+        <CameraLogo />
+      </TouchableOpacity>
     </View>
   );
 };
 
-export default buttonnavigation;
+export default Buttonnavigation;
 
 const styles = StyleSheet.create({});
