@@ -8,6 +8,7 @@ import {
   CameraLogo,
 } from './atoms/index';
 import {Buttonnavigation} from './molecules/index';
+import {Card} from './molecules/index';
 export {
   Button,
   TextInput,
@@ -17,4 +18,5 @@ export {
   ActivityLogo,
   CameraLogo,
   Buttonnavigation,
+  Card,
 };

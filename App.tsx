@@ -5,7 +5,7 @@ import {SplashScreen, Login} from './src/pages';
 const App = () => {
   return (
     <View>
-      <SplashScreen />
+      {/* <SplashScreen /> */}
       <Login />
     </View>
   );

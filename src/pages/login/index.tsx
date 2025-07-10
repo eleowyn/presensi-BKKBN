@@ -5,6 +5,7 @@ import {
   Button,
   TextTitle,
   Buttonnavigation,
+  Card,
 } from '../../components/index';
 
 const Login = () => {
@@ -14,6 +15,7 @@ const Login = () => {
       <TextInput />
       <Button />
       <Buttonnavigation />
+      <Card/>
     </View>
   );
 };
