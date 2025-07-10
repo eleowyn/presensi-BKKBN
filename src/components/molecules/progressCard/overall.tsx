@@ -67,7 +67,6 @@ const OverallChart = ({
   return (
     <ScrollView style={{flex: 1}}>
       <View style={styles.container}>
-        <Text style={styles.title}>Overall Progress</Text>
         <PieChart widthAndHeight={CHART_SIZE} series={CHART_SERIES} />
       </View>
       <View style={styles.card}>
@@ -98,11 +97,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
     margin: 10,
-    fontFamily: 'Poppins-Medium',
   },
   font: {
     fontFamily: 'Poppins-Medium',

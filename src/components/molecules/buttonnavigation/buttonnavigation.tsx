@@ -29,6 +29,9 @@ export default Buttonnavigation;
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    bottom: 0,
+
     width: '100%',
     paddingVertical: 25,
 
