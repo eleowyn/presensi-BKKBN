@@ -13,7 +13,7 @@ import {
   WeeklyChart,
   OverallChart,
   Header,
-  profileCard,
+  ProfileCard,
 } from './molecules/index';
 export {
   Button,
@@ -28,5 +28,5 @@ export {
   WeeklyChart,
   OverallChart,
   Header,
-  profileCard,
+  ProfileCard,
 };

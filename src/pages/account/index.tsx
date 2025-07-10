@@ -1,11 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import React from 'react';
-import { Header, profileCard } from '../../components';
+import { Header, ProfileCard } from '../../components';
 
 const Account = () => {
   return (
     <ScrollView>
-        <View>
+        <View style={styles.container}>
             <View>
                 <Header text = 'Account'/>
             </View>
@@ -16,6 +16,11 @@ const Account = () => {
                 <Text style={styles.email}>elshera.dahlan@gmail.com</Text>
               </View>
             </View>
+            <View style={styles.card}>
+              <ProfileCard text='Department' placeholder='Ilmu Komputer'/>
+              <ProfileCard text='NIP' placeholder='12345575'/>
+              <ProfileCard text='Start Date' placeholder='7 july 2025'/>
+            </View>
         </View>
     </ScrollView>
   );
@@ -24,6 +29,9 @@ const Account = () => {
 export default Account;
 
 const styles = StyleSheet.create({
+  container: {
+    backgroundColor: 'white',
+  },
   profile: {
     flexDirection: 'row',
     marginTop: 50,
@@ -50,4 +58,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Medium',
     color: 'gray',
   },
+  card: {
+    marginTop: 50,
+  }
 });
