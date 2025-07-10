@@ -3,7 +3,7 @@ import React from 'react';
 
 const TextInput = ({
   placeholder = 'No Placeholder',
-  marginBottom = 30,
+  marginBottom = 7,
   ...rest
 }) => {
   return (

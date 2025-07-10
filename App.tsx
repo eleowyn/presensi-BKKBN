@@ -1,12 +1,13 @@
 import {View} from 'react-native';
 import React from 'react';
-import {SplashScreen, Login} from './src/pages';
+import {SplashScreen, Login, SignIn} from './src/pages';
 
 const App = () => {
   return (
     <View>
-      <SplashScreen />
-      {/* <Login /> */}
+      {/* <SplashScreen />
+      <Login /> */}
+      <SignIn/>
     </View>
   );
 };
