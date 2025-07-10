@@ -6,7 +6,22 @@ const WeeklyChart = () => {
   return (
     <ScrollView style={{flex: 1}}>
       <View style={styles.container}>
-        <Text style={styles.title}>Weekly Progress</Text>
+        <View style={styles.data}>
+          <View style={styles.value}>
+            <Text>Total Meetings</Text>
+            <Text>Attendance</Text>
+            <Text>Late</Text>
+            <Text>Excused</Text>
+            <Text>Unexcused</Text>
+          </View>
+          <View style={styles.value}>
+            <Text>3</Text>
+            <Text>1</Text>
+            <Text>2</Text>
+            <Text>0</Text>
+            <Text>0</Text>
+          </View>
+        </View>
         <PieChart
           widthAndHeight={CHART_SIZE}
           series={CHART_SERIES}
@@ -19,7 +34,7 @@ const WeeklyChart = () => {
 
 export default WeeklyChart;
 
-const CHART_SIZE = 250;
+const CHART_SIZE = 150;
 
 const CHART_SERIES = [
   {value: 430, color: '#fbd203', label: {text: 'A', fontWeight: 'bold'}},
@@ -40,6 +55,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
+  },
+  data: {
+    flexDirection: 'row',
+  },
+  value: {
+    gap: 10,
+    margin: 10,
   },
   title: {
     fontSize: 24,
