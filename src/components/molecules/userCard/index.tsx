@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import {View, Text, StyleSheet, Image} from 'react-native';
 
-const Card = ({ 
-  status = 'Present', 
-  date = '08 July 2025', 
-  location = 'GK2 - 108', 
-  time = '07.30', 
-  keterangan = '' 
+const Card = ({
+  status = 'Present',
+  date = '08 July 2025',
+  location = 'GK2 - 108',
+  time = '07.30',
+  keterangan = '',
 }) => {
   return (
     <View style={styles.card}>
@@ -19,17 +19,17 @@ const Card = ({
             <Text style={styles.label}>Date:</Text>
             <Text style={styles.value}>{date}</Text>
           </View>
-          
+
           <View style={styles.row}>
             <Text style={styles.label}>Location:</Text>
             <Text style={styles.value}>{location}</Text>
           </View>
-          
+
           <View style={styles.row}>
             <Text style={styles.label}>Start Time:</Text>
             <Text style={styles.value}>{time}</Text>
           </View>
-          
+
           <View style={styles.row}>
             <Text style={styles.label}>Keterangan:</Text>
             <Text style={styles.value}>{keterangan}</Text>
@@ -49,9 +49,9 @@ const styles = StyleSheet.create({
     margin: 16,
     shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 7,
     borderColor: '#E8E8E8',
     borderWidth: 1,
   },
