@@ -1,4 +1,4 @@
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, ScrollView} from 'react-native';
 import React from 'react';
 import {
   TextInput,
@@ -6,17 +6,21 @@ import {
   TextTitle,
   Buttonnavigation,
   Card,
+  WeeklyChart,
+  OverallChart,
 } from '../../components/index';
 
 const Login = () => {
   return (
-    <View>
+    <ScrollView>
       <TextTitle />
       <TextInput />
       <Button />
       <Buttonnavigation />
-      <Card/>
-    </View>
+      <Card />
+      <WeeklyChart />
+      <OverallChart />
+    </ScrollView>
   );
 };
 

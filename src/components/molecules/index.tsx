@@ -1,5 +1,5 @@
 import Buttonnavigation from './buttonnavigation/buttonnavigation';
-export {Buttonnavigation};
-
 import Card from './userCard';
-export {Card};
+import WeeklyChart from './progressCard/weekly';
+import OverallChart from './progressCard/overall';
+export {Card, Buttonnavigation, WeeklyChart, OverallChart};

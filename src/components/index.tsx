@@ -7,8 +7,12 @@ import {
   ActivityLogo,
   CameraLogo,
 } from './atoms/index';
-import {Buttonnavigation} from './molecules/index';
-import {Card} from './molecules/index';
+import {
+  Buttonnavigation,
+  Card,
+  WeeklyChart,
+  OverallChart,
+} from './molecules/index';
 export {
   Button,
   TextInput,
@@ -19,4 +23,6 @@ export {
   CameraLogo,
   Buttonnavigation,
   Card,
+  WeeklyChart,
+  OverallChart,
 };
