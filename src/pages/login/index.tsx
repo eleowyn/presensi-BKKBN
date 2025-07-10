@@ -3,11 +3,11 @@ import React from 'react';
 import {
   TextInput,
   Button,
-  TextTitle,
   Buttonnavigation,
   Card,
   WeeklyChart,
   OverallChart,
+  TextTitle,
 } from '../../components/index';
 
 const Login = () => {

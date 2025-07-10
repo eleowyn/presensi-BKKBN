@@ -1,10 +1,10 @@
 import React from 'react';
-import {StyleSheet, ScrollView, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import PieChart from 'react-native-pie-chart';
 
 const WeeklyChart = () => {
   return (
-    <ScrollView style={{flex: 1}}>
+    <View style={styles.card}>
       <View style={styles.container}>
         <View style={styles.data}>
           <View style={styles.value}>
@@ -28,7 +28,7 @@ const WeeklyChart = () => {
           cover={0.45}
         />
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -52,9 +52,24 @@ const CHART_SERIES = [
 ];
 
 const styles = StyleSheet.create({
+  card: {
+    flex: 1,
+    alignSelf: 'center',
+    borderRadius: 20,
+    padding: 20,
+    backgroundColor: '#FFFCEF',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: {width: 0, height: 2},
+    shadowRadius: 9,
+    elevation: 7,
+    overflow: 'hidden',
+  },
   container: {
     flex: 1,
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 50,
   },
   data: {
     flexDirection: 'row',
