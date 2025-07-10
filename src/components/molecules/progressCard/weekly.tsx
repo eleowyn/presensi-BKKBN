@@ -2,24 +2,87 @@ import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import PieChart from 'react-native-pie-chart';
 
-const WeeklyChart = () => {
+const WeeklyChart = ({
+  size = 150,
+  Attendance = 0,
+  Late = 0,
+  Excused = 0,
+  Unexcused = 0,
+}) => {
+  const CHART_SIZE = size;
+  const TotalMeetings = Attendance + Late + Excused + Unexcused;
+
+  const allSeries = [
+    {
+      value: Attendance,
+      color: '#fbd203',
+      label: {
+        text: 'Attendance',
+        fontSize: 9,
+        fontFamily: 'Poppins-Medium',
+      },
+    },
+    {
+      value: Late,
+      color: '#ffb300',
+      label: {
+        text: 'Late',
+        fontSize: 9,
+        fontFamily: 'Poppins-Medium',
+      },
+    },
+    {
+      value: Excused,
+      color: '#ff9100',
+      label: {
+        text: 'Excused',
+        fontSize: 9,
+        fontFamily: 'Poppins-Medium',
+      },
+    },
+    {
+      value: Unexcused,
+      color: '#ff6c00',
+      label: {
+        text: 'Unexcused',
+        fontSize: 9,
+        fontFamily: 'Poppins-Medium',
+      },
+    },
+  ];
+
+  const CHART_SERIES =
+    TotalMeetings === 0
+      ? [
+          {
+            value: 1,
+            color: '#CCCCCC',
+            label: {
+              text: 'No Record',
+              offsetY: -50,
+              fontFamily: 'Poppins-Medium',
+            },
+          },
+        ]
+      : allSeries.filter(item => item.value > 0);
+
   return (
-    <View style={styles.card}>
-      <View style={styles.container}>
+    <View style={styles.container}>
+      <View style={styles.card}>
         <View style={styles.data}>
           <View style={styles.value}>
-            <Text>Total Meetings</Text>
-            <Text>Attendance</Text>
-            <Text>Late</Text>
-            <Text>Excused</Text>
-            <Text>Unexcused</Text>
+            <Text style={styles.font}>Total Meetings</Text>
+            <Text style={styles.font}>Attendance</Text>
+            <Text style={styles.font}>Late</Text>
+            <Text style={styles.font}>Excused</Text>
+            <Text style={styles.font}>Unexcused</Text>
           </View>
           <View style={styles.value}>
-            <Text>3</Text>
-            <Text>1</Text>
-            <Text>2</Text>
-            <Text>0</Text>
-            <Text>0</Text>
+            <Text style={styles.font}>{TotalMeetings}</Text>
+            <Text style={styles.font}>{Attendance}</Text>
+            <Text style={styles.font}>{Late}</Text>
+            <Text style={styles.font}>{Excused}</Text>
+            <Text style={styles.font}>{Unexcused}</Text>
           </View>
         </View>
         <PieChart
@@ -34,25 +97,8 @@ const WeeklyChart = () => {
 
 export default WeeklyChart;
 
-const CHART_SIZE = 150;
-
-const CHART_SERIES = [
-  {value: 430, color: '#fbd203', label: {text: 'A', fontWeight: 'bold'}},
-  {
-    value: 321,
-    color: '#ffb300',
-    label: {text: 'mobile', offsetY: 10, offsetX: 10},
-  },
-  {
-    value: 185,
-    color: '#ff9100',
-    label: {text: '%22', fontSize: 8, fontStyle: 'italic', outline: 'white'},
-  },
-  {value: 123, color: '#ff6c00'},
-];
-
 const styles = StyleSheet.create({
-  card: {
+  container: {
     flex: 1,
     alignSelf: 'center',
     borderRadius: 20,
@@ -61,11 +107,11 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowOffset: {width: 0, height: 2},
-    shadowRadius: 9,
+    shadowRadius: 4,
     elevation: 7,
     overflow: 'hidden',
   },
-  container: {
+  card: {
     flex: 1,
     alignItems: 'center',
     flexDirection: 'row',
@@ -73,13 +119,13 @@ const styles = StyleSheet.create({
   },
   data: {
     flexDirection: 'row',
+    gap: 5,
   },
   value: {
     gap: 10,
-    margin: 10,
+    margin: 5,
   },
-  title: {
-    fontSize: 24,
-    margin: 10,
+  font: {
+    fontFamily: 'Poppins-Medium',
   },
 });
