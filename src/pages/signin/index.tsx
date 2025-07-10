@@ -7,7 +7,7 @@ import { Button, TextInput, TextTitle } from '../../components';
 const SignIn = () => {
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      <View>
+      <View style={styles.container}>
         <Logo style={styles.logo}/>
         <Text style={styles.title}>Let's Get Started</Text>
         <View style={styles.inputContainer}>
@@ -39,6 +39,9 @@ const SignIn = () => {
 export default SignIn;
 
 const styles = StyleSheet.create({
+    container: {
+        backgroundColor: 'white',
+    },
     logo: {
         marginTop: 96,
         alignSelf: 'center',
@@ -66,7 +69,8 @@ const styles = StyleSheet.create({
     loginContainer: {
         flexDirection: 'row',
         alignSelf: 'center',
-        marginVertical: 27,
+        marginTop: 15,
+        marginVertical: 30,
     },
     account: {
         fontFamily: 'Poppins-Medium',
