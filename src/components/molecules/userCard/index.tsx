@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet, Image} from 'react-native';
+import {View, Text, StyleSheet, Image, TouchableOpacity} from 'react-native';
 
 const Card = ({
   status = 'Present',
@@ -9,35 +9,37 @@ const Card = ({
   keterangan = '',
 }) => {
   return (
-    <View style={styles.card}>
-      <View style={styles.statusBadge}>
-        <Text style={styles.statusText}>{status}</Text>
-      </View>
-      <View style={styles.detailsContainer}>
-        <View style={styles.textSection}>
-          <View style={styles.row}>
-            <Text style={styles.label}>Date:</Text>
-            <Text style={styles.value}>{date}</Text>
-          </View>
-
-          <View style={styles.row}>
-            <Text style={styles.label}>Location:</Text>
-            <Text style={styles.value}>{location}</Text>
-          </View>
-
-          <View style={styles.row}>
-            <Text style={styles.label}>Start Time:</Text>
-            <Text style={styles.value}>{time}</Text>
-          </View>
-
-          <View style={styles.row}>
-            <Text style={styles.label}>Keterangan:</Text>
-            <Text style={styles.value}>{keterangan}</Text>
-          </View>
+    <TouchableOpacity>
+      <View style={styles.card}>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>{status}</Text>
         </View>
-        <View style={styles.imageBox} />
+        <View style={styles.detailsContainer}>
+          <View style={styles.textSection}>
+            <View style={styles.row}>
+              <Text style={styles.label}>Date:</Text>
+              <Text style={styles.value}>{date}</Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>Location:</Text>
+              <Text style={styles.value}>{location}</Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>Start Time:</Text>
+              <Text style={styles.value}>{time}</Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>Keterangan:</Text>
+              <Text style={styles.value}>{keterangan}</Text>
+            </View>
+          </View>
+          <View style={styles.imageBox} />
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
