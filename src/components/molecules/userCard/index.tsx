@@ -8,11 +8,42 @@ const Card = ({
   time = '07.30',
   keterangan = '',
 }) => {
+  const getStatusStyle = status => {
+    switch (status) {
+      case 'Present':
+        return {
+          badge: {backgroundColor: '#B4FFB1'},
+          text: {color: '#2B6000'},
+        };
+      case 'Late':
+        return {
+          badge: {backgroundColor: '#FFF3B1'},
+          text: {color: '#8A6E00'},
+        };
+      case 'Excused':
+        return {
+          badge: {backgroundColor: '#B1D6FF'},
+          text: {color: '#004E8A'},
+        };
+      case 'Unexcused':
+        return {
+          badge: {backgroundColor: '#FFB1B1'},
+          text: {color: '#8A0000'},
+        };
+      default:
+        return {
+          badge: {backgroundColor: '#CCCCCC'},
+          text: {color: '#333333'},
+        };
+    }
+  };
   return (
     <TouchableOpacity>
       <View style={styles.card}>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>{status}</Text>
+        <View style={[styles.statusBadge, getStatusStyle(status).badge]}>
+          <Text style={[styles.statusText, getStatusStyle(status).text]}>
+            {status}
+          </Text>
         </View>
         <View style={styles.detailsContainer}>
           <View style={styles.textSection}>
@@ -64,11 +95,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 37,
     marginBottom: 16,
+    width: 100,
   },
   statusText: {
     fontFamily: 'Poppins-SemiBold',
     color: '#2B6000',
     fontSize: 12,
+    alignSelf: 'center',
   },
   detailsContainer: {
     flexDirection: 'row',

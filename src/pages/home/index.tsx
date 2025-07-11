@@ -1,4 +1,4 @@
-import {StyleSheet, ScrollView, View} from 'react-native';
+import {StyleSheet, ScrollView, View, SafeAreaView} from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {
   Buttonnavigation,
@@ -23,7 +23,7 @@ const Home = () => {
   const [unexcusedOverall, setUnexcusedOverall] = useState(1);
 
   return (
-    <View>
+    <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <Header text={`Hai, ${firstname}`} />
         <TextTitle text={'Here’s your weekly statistics'} />
@@ -44,8 +44,16 @@ const Home = () => {
         <View style={{marginBottom: 100}}></View>
       </ScrollView>
       <Buttonnavigation />
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default Home;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: '#F5F5F5',
+  },
+});
