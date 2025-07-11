@@ -1,11 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import React from 'react';
-import { ButtonNavAdmin } from '../../components';
+import { Buttonnavigation } from '../../components';
 
 const Dashboard = () => {
   return (
     <View>
-      <ButtonNavAdmin/>
+      <Buttonnavigation/>
     </View>
   );
 };
