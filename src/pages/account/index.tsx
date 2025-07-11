@@ -1,28 +1,31 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import React from 'react';
-import { Header, ProfileCard } from '../../components';
+import { ButtonNavAdmin, Buttonnavigation, Header, ProfileCard } from '../../components';
 
 const Account = () => {
   return (
-    <ScrollView>
-        <View style={styles.container}>
-            <View>
-                <Header text = 'Account'/>
-            </View>
-            <View style={styles.profile}>
-              <View style={styles.imageBox} />
-              <View style={styles.subprofile}>
-                <Text style={styles.name}>elshera</Text>
-                <Text style={styles.email}>elshera.dahlan@gmail.com</Text>
+    <View>
+        <ScrollView>
+          <View style={styles.container}>
+              <View>
+                  <Header text = 'Account'/>
               </View>
-            </View>
-            <View style={styles.card}>
-              <ProfileCard text='Department' placeholder='Ilmu Komputer'/>
-              <ProfileCard text='NIP' placeholder='12345575'/>
-              <ProfileCard text='Start Date' placeholder='7 july 2025'/>
-            </View>
-        </View>
-    </ScrollView>
+              <View style={styles.profile}>
+                <View style={styles.imageBox} />
+                <View style={styles.subprofile}>
+                  <Text style={styles.name}>elshera</Text>
+                  <Text style={styles.email}>elshera.dahlan@gmail.com</Text>
+                </View>
+              </View>
+              <View style={styles.card}>
+                <ProfileCard text='Department' placeholder='Ilmu Komputer'/>
+                <ProfileCard text='NIP' placeholder='12345575'/>
+                <ProfileCard text='Start Date' placeholder='7 july 2025'/>
+              </View>
+          </View>
+      </ScrollView>
+      <Buttonnavigation/>
+    </View>
   );
 };
 
@@ -60,5 +63,5 @@ const styles = StyleSheet.create({
   },
   card: {
     marginTop: 50,
-  }
+  },
 });

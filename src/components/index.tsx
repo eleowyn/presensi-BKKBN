@@ -14,6 +14,7 @@ import {
   OverallChart,
   Header,
   ProfileCard,
+  ButtonNavAdmin,
 } from './molecules/index';
 export {
   Button,
@@ -29,4 +30,5 @@ export {
   OverallChart,
   Header,
   ProfileCard,
+  ButtonNavAdmin,
 };

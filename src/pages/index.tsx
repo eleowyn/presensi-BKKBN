@@ -3,4 +3,5 @@ import Login from './login/index';
 import SignIn from './signin';
 import Account from './account';
 import Home from './home';
-export {SplashScreen, Login, SignIn, Account, Home};
+import Dashboard from './dashboardAdmin';
+export {SplashScreen, Login, SignIn, Account, Home, Dashboard};
