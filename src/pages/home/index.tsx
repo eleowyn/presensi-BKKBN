@@ -12,15 +12,15 @@ const Home = () => {
   const [firstname, setFirstName] = useState('User');
   const [loading, setLoading] = useState(true);
   //   const [totalMeetingsWeekly, setTotalMeetingsWeekly] = useState(0);
-  const [attendanceWeekly, setAttendanceWeekly] = useState(0);
-  const [lateWeekly, setLateWeekly] = useState(0);
-  const [excusedWeekly, setExcusedWeekly] = useState(0);
-  const [unexcusedWeekly, setUnexcusedWeekly] = useState(0);
-  //   const [totalMeetingsOverall, setTotalMeetingsOverall] = useState(0);
-  const [attendanceOverall, setAttendanceOverall] = useState(0);
-  const [lateOverall, setLateOverall] = useState(0);
-  const [excusedOverall, setExcusedOverall] = useState(0);
-  const [unexcusedOverall, setUnexcusedOverall] = useState(0);
+  const [attendanceWeekly, setAttendanceWeekly] = useState(1);
+  const [lateWeekly, setLateWeekly] = useState(1);
+  const [excusedWeekly, setExcusedWeekly] = useState(1);
+  const [unexcusedWeekly, setUnexcusedWeekly] = useState(1);
+  //   const [totalMeetingsOverall, setTotalMeetingsOverall] = useState(1);
+  const [attendanceOverall, setAttendanceOverall] = useState(1);
+  const [lateOverall, setLateOverall] = useState(1);
+  const [excusedOverall, setExcusedOverall] = useState(1);
+  const [unexcusedOverall, setUnexcusedOverall] = useState(1);
 
   return (
     <View>
