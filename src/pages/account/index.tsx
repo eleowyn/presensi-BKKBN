@@ -2,7 +2,7 @@ import {ScrollView, StyleSheet, Text, View, SafeAreaView} from 'react-native';
 import React from 'react';
 import {Buttonnavigation, Header, ProfileCard} from '../../components';
 
-const Account = () => {
+const Account = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>

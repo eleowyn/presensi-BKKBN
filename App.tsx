@@ -1,16 +1,57 @@
 import {View} from 'react-native';
 import React from 'react';
-import {SplashScreen, Login, SignIn, Account, Dashboard} from './src/pages';
+import {
+  Account,
+  Activity,
+  Home,
+  Login,
+  SignIn,
+  SplashScreen,
+} from './src/pages';
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import FlashMessage from 'react-native-flash-message';
+
+const Stack = createNativeStackNavigator();
 
 const App = () => {
   return (
-    <View>
-      {/* <SplashScreen />
-      <Login />
-      <SignIn/> */}
-      <Account/>
-      {/* <Dashboard/> */}
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen
+          name="SplashScreen"
+          component={SplashScreen}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="Login"
+          component={Login}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="SignIn"
+          component={SignIn}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="Home"
+          component={Home}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="Activity"
+          component={Activity}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="Account"
+          component={Account}
+          options={{headerShown: false}}
+        />
+      </Stack.Navigator>
+
+      <FlashMessage position="top" />
+    </NavigationContainer>
   );
 };
 

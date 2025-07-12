@@ -2,7 +2,7 @@ import {StyleSheet, View, ScrollView, SafeAreaView} from 'react-native';
 import React from 'react';
 import {Buttonnavigation, Card} from '../../components';
 
-const Activity = () => {
+const Activity = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
