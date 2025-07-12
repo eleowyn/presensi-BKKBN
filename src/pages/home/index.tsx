@@ -8,7 +8,7 @@ import {
   Header,
 } from '../../components/index';
 
-const Home = () => {
+const Home = ({navigation}) => {
   const [firstname, setFirstName] = useState('User');
   const [loading, setLoading] = useState(true);
   //   const [totalMeetingsWeekly, setTotalMeetingsWeekly] = useState(0);
@@ -43,7 +43,7 @@ const Home = () => {
         />
         <View style={{marginBottom: 100}}></View>
       </ScrollView>
-      <Buttonnavigation />
+      <Buttonnavigation navigation={navigation} />
     </SafeAreaView>
   );
 };
