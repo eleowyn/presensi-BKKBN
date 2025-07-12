@@ -3,10 +3,8 @@ import React from 'react';
 import Logo from '../../assets/Logo_Kementerian_Kependudukan_dan_Pembangunan_Keluarga_-_BKKBN_(2024)_.svg';
 import Checkbox from '../../assets/Checkbox Field.svg';
 import {Button, TextInput, TextTitle} from '../../components';
-import {useNavigation} from '@react-navigation/native';
 
-const SignIn = () => {
-  const navigation = useNavigation();
+const SignIn = ({navigation}) => {
   return (
     <View style={styles.container}>
       <Logo style={styles.logo} />

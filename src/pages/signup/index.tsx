@@ -10,7 +10,7 @@ import Logo from '../../assets/Logo_Kementerian_Kependudukan_dan_Pembangunan_Kel
 import Checkbox from '../../assets/Checkbox Field.svg';
 import {Button, TextInput, TextTitle} from '../../components';
 
-const SignIn = () => {
+const SignUp = ({navigation}) => {
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <View style={styles.container}>
@@ -34,7 +34,7 @@ const SignIn = () => {
           <Button text="Sign In" />
           <View style={styles.loginContainer}>
             <Text style={styles.account}>Already have an account?</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
               <Text style={styles.login}>Log In</Text>
             </TouchableOpacity>
           </View>
@@ -44,7 +44,7 @@ const SignIn = () => {
   );
 };
 
-export default SignIn;
+export default SignUp;
 
 const styles = StyleSheet.create({
   container: {

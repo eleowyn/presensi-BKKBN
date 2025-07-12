@@ -5,7 +5,7 @@ import {
   Activity,
   Home,
   Login,
-  SignIn,
+  SignUp,
   SplashScreen,
   Dashboard,
 } from './src/pages';
@@ -31,7 +31,7 @@ const App = () => {
         />
         <Stack.Screen
           name="SignUp"
-          component={SignIn}
+          component={SignUp}
           options={{headerShown: false}}
         />
         <Stack.Screen

@@ -43,7 +43,7 @@ const Home = ({navigation}) => {
         />
         <View style={{marginBottom: 100}}></View>
       </ScrollView>
-      <Buttonnavigation />
+      <Buttonnavigation navigation={navigation} />
     </SafeAreaView>
   );
 };

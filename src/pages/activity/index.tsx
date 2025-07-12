@@ -1,11 +1,12 @@
 import {StyleSheet, View, ScrollView, SafeAreaView} from 'react-native';
 import React from 'react';
-import {Buttonnavigation, Card} from '../../components';
+import {Buttonnavigation, Card, Header} from '../../components';
 
 const Activity = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
+        <Header text="History" />
         <Card
           status="Late"
           date="08 July 2025"
@@ -36,7 +37,7 @@ const Activity = ({navigation}) => {
         />
       </ScrollView>
       <View style={{marginBottom: 150}}></View>
-      <Buttonnavigation />
+      <Buttonnavigation navigation={navigation} />
     </SafeAreaView>
   );
 };

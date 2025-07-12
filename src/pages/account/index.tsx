@@ -25,7 +25,7 @@ const Account = ({navigation}) => {
         </View>
       </ScrollView>
       <View style={{marginBottom: 150}}></View>
-      <Buttonnavigation />
+      <Buttonnavigation navigation={navigation} />
     </SafeAreaView>
   );
 };
