@@ -1,15 +1,15 @@
 import {View} from 'react-native';
 import React from 'react';
-import {SplashScreen, Login, SignIn, Account, Dashboard} from './src/pages';
+import {SplashScreen, Login, SignIn, Account, DashboardAdmin} from './src/pages';
 
 const App = () => {
   return (
     <View>
       {/* <SplashScreen />
       <Login />
-      <SignIn/> */}
-      <Account/>
-      {/* <Dashboard/> */}
+      <SignIn/>
+      <Account/> */}
+      <DashboardAdmin/>
     </View>
   );
 };

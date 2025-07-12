@@ -1,17 +1,18 @@
-import {StyleSheet, Text, View, TouchableOpacity} from 'react-native';
 import React from 'react';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { HomeLogo, ActivityLogo } from '../../atoms';
 
 const ButtonNavAdmin = () => {
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.home}>
+    <View style={styles.navBar}>
+      <TouchableOpacity style={styles.navItem}>
         <HomeLogo />
-        <Text style={styles.text}>Home</Text>
+        <Text style={styles.label}>Home</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.activity}>
+
+      <TouchableOpacity style={styles.navItem}>
         <ActivityLogo />
-        <Text style={styles.text}>History</Text>
+        <Text style={styles.label}>History</Text>
       </TouchableOpacity>
     </View>
   );
@@ -20,28 +21,28 @@ const ButtonNavAdmin = () => {
 export default ButtonNavAdmin;
 
 const styles = StyleSheet.create({
-  container: {
+  navBar: {
     position: 'absolute',
-    bottom: 0,
-
+    bottom: 1,
     width: '100%',
-    paddingVertical: 25,
+    paddingVertical: 20,
 
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
 
     backgroundColor: '#FFFFFF',
-
-    borderWidth: 1,
+    borderTopWidth: 1,
     borderColor: '#DEDEDE',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
-  home: {},
-  activity: {},
-  text: {
+  navItem: {
+    alignItems: 'center',
+  },
+  label: {
     fontFamily: 'Poppins-SemiBold',
     fontSize: 10,
+    marginTop: 4,
   },
 });

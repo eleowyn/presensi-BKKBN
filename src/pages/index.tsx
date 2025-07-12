@@ -4,5 +4,5 @@ import SignIn from './signin';
 import Account from './account';
 import Home from './home';
 import Activity from './activity';
-import Dashboard from './dashboardAdmin';
-export {SplashScreen, Login, SignIn, Account, Home, Activity, Dashboard};
+import DashboardAdmin from './dashboard';
+export {SplashScreen, Login, SignIn, Account, Home, Activity, DashboardAdmin};
