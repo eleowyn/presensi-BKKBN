@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { HomeLogo, ActivityLogo } from '../../atoms';
+import { HomeLogo } from '../../atoms';
 
 const ButtonNavAdmin = () => {
   return (
@@ -8,11 +8,6 @@ const ButtonNavAdmin = () => {
       <TouchableOpacity style={styles.navItem}>
         <HomeLogo />
         <Text style={styles.label}>Home</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.navItem}>
-        <ActivityLogo />
-        <Text style={styles.label}>History</Text>
       </TouchableOpacity>
     </View>
   );
