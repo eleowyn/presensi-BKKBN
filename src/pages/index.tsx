@@ -5,4 +5,4 @@ import Account from './account';
 import Home from './home';
 import Activity from './activity';
 import Dashboard from './dashboardAdmin';
-export {SplashScreen, Login, SignIn, Account, Home, Activity, Dashboard};
+export {SplashScreen, Login, SignUp, Account, Home, Activity, Dashboard};
