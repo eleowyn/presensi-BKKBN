@@ -4,6 +4,6 @@ import SignUp from './signup';
 import Account from './account';
 import Home from './home';
 import Activity from './activity';
-import Dashboard from './dashboardAdmin';
+import DashboardAdmin from './dashboard';
 import Scan from './scan';
-export {SplashScreen, Login, SignUp, Account, Home, Activity, Dashboard, Scan};
+export {SplashScreen, Login, SignUp, Account, Home, Activity, DashboardAdmin, Scan};
