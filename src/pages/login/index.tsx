@@ -1,44 +1,38 @@
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-} from 'react-native';
+import {StyleSheet, Text, View, TouchableOpacity} from 'react-native';
 import React from 'react';
 import Logo from '../../assets/Logo_Kementerian_Kependudukan_dan_Pembangunan_Keluarga_-_BKKBN_(2024)_.svg';
 import Checkbox from '../../assets/Checkbox Field.svg';
 import {Button, TextInput, TextTitle} from '../../components';
+import {useNavigation} from '@react-navigation/native';
 
 const SignIn = () => {
+  const navigation = useNavigation();
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
-        <Logo style={styles.logo} />
-        <Text style={styles.title}>Welcome Back</Text>
-        <View style={styles.inputContainer}>
-          <TextTitle text="Email Address" />
-          <TextInput placeholder="Your Email Address" />
-          <TextTitle text="Password" />
-          <TextInput placeholder="**********" secureTextEntry={true} />
-          <View style={styles.termsContainer}>
-            <Checkbox />
-            <Text style={styles.terms}>Remember Me</Text>
-          </View>
-          <TouchableOpacity>
-            <Text style={styles.resetpassword}>Reset Password?</Text>
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <Logo style={styles.logo} />
+      <Text style={styles.title}>Welcome Back</Text>
+      <View style={styles.inputContainer}>
+        <TextTitle text="Email Address" />
+        <TextInput placeholder="Your Email Address" />
+        <TextTitle text="Password" />
+        <TextInput placeholder="**********" secureTextEntry={true} />
+        <View style={styles.termsContainer}>
+          <Checkbox />
+          <Text style={styles.terms}>Remember Me</Text>
+        </View>
+        <TouchableOpacity>
+          <Text style={styles.resetpassword}>Reset Password?</Text>
+        </TouchableOpacity>
 
-          <Button text="Log In" />
-          <View style={styles.loginContainer}>
-            <Text style={styles.account}>Doesn't have an account?</Text>
-            <TouchableOpacity>
-              <Text style={styles.login}>Sign In</Text>
-            </TouchableOpacity>
-          </View>
+        <Button text="Log In" onPress={() => navigation.navigate('Home')} />
+        <View style={styles.loginContainer}>
+          <Text style={styles.account}>Doesn't have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+            <Text style={styles.login}>Sign Up</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -46,7 +40,8 @@ export default SignIn;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   logo: {
     marginTop: 96,

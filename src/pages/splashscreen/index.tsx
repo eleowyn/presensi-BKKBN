@@ -2,13 +2,14 @@ import {StyleSheet, View, Animated, Dimensions} from 'react-native';
 import React, {useEffect, useRef} from 'react';
 import Logo from '../../assets/Logo_Kementerian_Kependudukan_dan_Pembangunan_Keluarga_-_BKKBN_(2024)_.svg';
 import LogoBkkbn from '../../assets/textBKKBN.svg';
-
+import {useNavigation} from '@react-navigation/native';
 const {width, height} = Dimensions.get('window');
 
 const SplashScreen = () => {
   const fadeAnim1 = useRef(new Animated.Value(0)).current;
   const slideAnim1 = useRef(new Animated.Value(0)).current;
   const fadeAnim2 = useRef(new Animated.Value(0)).current;
+  const navigation = useNavigation();
 
   useEffect(() => {
     // First animation: Logo 1 fades in
@@ -29,7 +30,12 @@ const SplashScreen = () => {
             toValue: 1,
             duration: 800,
             useNativeDriver: true,
-          }).start();
+          }).start(() => {
+            // After all animations complete, navigate to Login screen after 1 second
+            setTimeout(() => {
+              navigation.navigate('Login');
+            }, 1000);
+          });
         });
       }, 500);
     });
