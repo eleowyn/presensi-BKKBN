@@ -12,6 +12,7 @@ import {
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import FlashMessage from 'react-native-flash-message';
+import Scan from './src/pages/scan';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,6 +38,11 @@ const App = () => {
         <Stack.Screen
           name="Home"
           component={Home}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="Scan"
+          component={Scan}
           options={{headerShown: false}}
         />
         <Stack.Screen
