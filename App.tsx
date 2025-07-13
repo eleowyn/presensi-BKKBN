@@ -16,6 +16,8 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import FlashMessage from 'react-native-flash-message';
 
+import './src/config/Firebase';
+
 const Stack = createNativeStackNavigator();
 
 const App = () => {
@@ -23,15 +25,16 @@ const App = () => {
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen
-          name="SplashScreen"
-          component={SplashScreen}
-          options={{headerShown: false}}
-        />
-        <Stack.Screen
           name="Login"
           component={Login}
           options={{headerShown: false}}
         />
+        <Stack.Screen
+          name="SplashScreen"
+          component={SplashScreen}
+          options={{headerShown: false}}
+        />
+
         <Stack.Screen
           name="SignUp"
           component={SignUp}
