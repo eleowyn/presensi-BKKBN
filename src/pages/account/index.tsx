@@ -1,6 +1,13 @@
-import {ScrollView, StyleSheet, Text, View, SafeAreaView} from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  TouchableOpacity,
+} from 'react-native';
 import React from 'react';
-import {Buttonnavigation, Header, ProfileCard} from '../../components';
+import {Button, Buttonnavigation, Header, ProfileCard} from '../../components';
 
 const Account = ({navigation}) => {
   return (
@@ -11,7 +18,9 @@ const Account = ({navigation}) => {
             <Header text="Account" />
           </View>
           <View style={styles.profile}>
-            <View style={styles.imageBox} />
+            <TouchableOpacity>
+              <View style={styles.imageBox} />
+            </TouchableOpacity>
             <View style={styles.subprofile}>
               <Text style={styles.name}>elshera</Text>
               <Text style={styles.email}>elshera.dahlan@gmail.com</Text>
@@ -23,6 +32,7 @@ const Account = ({navigation}) => {
             <ProfileCard text="Start Date" placeholder="7 july 2025" />
           </View>
         </View>
+        <Button text="Log Out" />
       </ScrollView>
       <View style={{marginBottom: 150}}></View>
       <Buttonnavigation navigation={navigation} />
