@@ -1,6 +1,6 @@
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import React from 'react';
-import { ButtonNavAdmin, Header } from '../../components';
+import { Button, ButtonNavAdmin, Header, ScanDetailsCard, UserDetailsCard } from '../../components';
 
 const UserDetail = ({navigation}) => {
   return (
@@ -13,10 +13,11 @@ const UserDetail = ({navigation}) => {
                 </View>
                 <View>
                     <View>
-                        <Text>User's Details</Text>
-                        
+                        <UserDetailsCard/>
+                        <ScanDetailsCard/>
                     </View>
                 </View>
+                <Button text="Confirm"/>
             </ScrollView>
             <ButtonNavAdmin navigation={navigation} />
         </View>
@@ -46,5 +47,6 @@ const styles = StyleSheet.create({
     height: 306,
     backgroundColor: '#CCCCCC',
     borderRadius: 12,
+    alignSelf: 'center',
   },
 });
