@@ -11,8 +11,9 @@ import Checkbox from '../../assets/Checkbox Field.svg';
 import {Button, TextInput, TextTitle} from '../../components';
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import {showMessage} from 'react-native-flash-message';
+import {isAdminEmail} from '../../utils/adminUtils';
 
-const SignIn = ({navigation}) => {
+const SignIn = ({navigation}: {navigation: any}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -41,8 +42,21 @@ const SignIn = ({navigation}) => {
         duration: 3000,
       });
 
-      navigation.replace('Home');
-    } catch (error) {
+      // Check if the logged-in user is admin
+      console.log('Login email:', email);
+      console.log('Admin check result:', isAdminEmail(email));
+      console.log('Direct comparison:', email.toLowerCase() === 'bkkbnsulutadmin@gmail.com');
+      
+      if (isAdminEmail(email)) {
+        // Admin user - redirect to Dashboard (admin page)
+        console.log('Redirecting to Dashboard');
+        navigation.replace('Dashboard');
+      } else {
+        // Regular user - redirect to Home
+        console.log('Redirecting to Home');
+        navigation.replace('Home');
+      }
+    } catch (error: any) {
       let errorMessage = 'Login gagal. Silakan coba lagi.';
 
       // Handle error spesifik dari Firebase

@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: 'white',
     justifyContent: 'center',
   },
 });

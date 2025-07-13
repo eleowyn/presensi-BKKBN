@@ -15,6 +15,7 @@ import {Button, TextInput, TextTitle} from '../../components';
 import {getAuth, createUserWithEmailAndPassword} from 'firebase/auth';
 import {getDatabase, ref, set} from 'firebase/database';
 import {showMessage} from 'react-native-flash-message';
+import {createUserProfile} from '../../config/Firebase/utils';
 
 const departments = [
   'PERENCANAAN DAN MANAJEMEN KINERJA',
@@ -83,13 +84,14 @@ const SignUp = ({navigation}) => {
 
       // 2. Simpan data tambahan user di Realtime Database
       const db = getDatabase();
-      await set(ref(db, `users/${userCredential.user.uid}`), {
+      const userProfileData = createUserProfile(userCredential, {
         department,
         NIP,
         fullName,
         email,
-        createdAt: new Date().toISOString(),
       });
+      
+      await set(ref(db, `users/${userCredential.user.uid}`), userProfileData);
 
       // Tampilkan pesan sukses
       showMessage({
