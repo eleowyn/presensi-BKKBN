@@ -4,7 +4,7 @@ import Logo from '../../assets/Logo_Kementerian_Kependudukan_dan_Pembangunan_Kel
 import LogoBkkbn from '../../assets/textBKKBN.svg';
 import {useNavigation} from '@react-navigation/native';
 const {width, height} = Dimensions.get('window');
-
+//SPLASHSCREEN
 const SplashScreen = () => {
   const fadeAnim1 = useRef(new Animated.Value(0)).current;
   const slideAnim1 = useRef(new Animated.Value(0)).current;
