@@ -17,7 +17,7 @@ const Lists = ({navigation}) => {
             />
             <TextInputAdmin style={styles.textinput1} />
           </View>
-          <View>
+          <View style={styles.card}>
             <Admincard />
             <Admincard />
             <Admincard />
@@ -36,7 +36,13 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
   },
-  textinput: {},
-  textinput1: {},
+  textinput: {
+  },
+  textinput1: {
+    marginBottom: 15,
+  },
   scrollView: {},
+  card: {
+    marginBottom: 130,
+  }
 });
