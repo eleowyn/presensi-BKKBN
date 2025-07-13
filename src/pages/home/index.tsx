@@ -96,8 +96,8 @@ const Home = ({navigation}) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text>Memuat data...</Text>
+      <SafeAreaView style={styles.loading}>
+        <Text>Loading...</Text>
       </SafeAreaView>
     );
   }
@@ -136,5 +136,8 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: '#F5F5F5',
     justifyContent: 'center',
+  },
+  loading: {
+    alignSelf: 'center',
   },
 });
