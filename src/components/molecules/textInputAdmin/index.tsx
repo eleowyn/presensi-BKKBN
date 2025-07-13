@@ -1,4 +1,4 @@
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View, Text, TouchableOpacity } from 'react-native';
 import React from 'react';
 
 const TextInputAdmin = ({
@@ -8,30 +8,59 @@ const TextInputAdmin = ({
   rightValue,
   onLeftChange,
   onRightChange,
+  onLeftPress,
+  onRightPress,
+  isLeftDropdown = false,
+  isRightDropdown = false,
   placeholderTextColor = "#999",
   style,
   ...props
 }) => {
   return (
     <View style={[styles.container, style]}>
-      <TextInput
-        style={[styles.input]}
-        placeholder={text}
-        placeholderTextColor={placeholderTextColor}
-        value={leftValue}
-        onChangeText={onLeftChange}
-        editable={false}
-        {...props}
-      />
-      <TextInput
-        style={[styles.input]}
-        placeholder={placeholder}
-        placeholderTextColor={placeholderTextColor}
-        value={rightValue}
-        onChangeText={onRightChange}
-        editable={false}
-        {...props}
-      />
+      {isLeftDropdown ? (
+        <TouchableOpacity
+          style={styles.input}
+          onPress={onLeftPress}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.dropdownText, !leftValue && { color: placeholderTextColor }]}>
+            {leftValue || text}
+          </Text>
+          <Text style={styles.dropdownIcon}>▼</Text>
+        </TouchableOpacity>
+      ) : (
+        <TextInput
+          style={styles.input}
+          placeholder={text}
+          placeholderTextColor={placeholderTextColor}
+          value={leftValue}
+          onChangeText={onLeftChange}
+          {...props}
+        />
+      )}
+
+      {isRightDropdown ? (
+        <TouchableOpacity
+          style={styles.input}
+          onPress={onRightPress}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.dropdownText, !rightValue && { color: placeholderTextColor }]}>
+            {rightValue || placeholder}
+          </Text>
+          <Text style={styles.dropdownIcon}>▼</Text>
+        </TouchableOpacity>
+      ) : (
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor={placeholderTextColor}
+          value={rightValue}
+          onChangeText={onRightChange}
+          {...props}
+        />
+      )}
     </View>
   );
 };
@@ -57,5 +86,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#333',
     textAlign: 'left',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownText: {
+    fontSize: 13,
+    fontFamily: 'Poppins-Medium',
+    color: '#333',
+  },
+  dropdownIcon: {
+    fontSize: 10,
+    color: '#999',
+    marginLeft: 8,
   },
 });

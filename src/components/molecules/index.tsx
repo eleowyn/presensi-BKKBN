@@ -7,6 +7,8 @@ import ProfileCard from './profile/profile';
 import ButtonNavAdmin from './buttonNavigationAdmin';
 import Admincard from './adminCard';
 import TextInputAdmin from './textInputAdmin';
+import UserDetailsCard from './userDetailsCard';
+import ScanDetailsCard from './scanDetailsCard';
 export {
   Card,
   Buttonnavigation,
@@ -16,4 +18,6 @@ export {
   ProfileCard,
   ButtonNavAdmin,
   Admincard,
-  TextInputAdmin};
+  TextInputAdmin,
+  UserDetailsCard,
+  ScanDetailsCard};

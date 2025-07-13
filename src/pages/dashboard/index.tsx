@@ -8,7 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import {ButtonNavAdmin, Header, Admincard} from '../../components';
+import {ButtonNavAdmin, Header, Admincard, ScanDetailsCard} from '../../components';
 
 const DashboardAdmin = ({navigation}) => {
   console.log('DASHBOARD NAVIGATION:', navigation);
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontFamily: 'Poppins-Medium',
     fontSize: 12,
-    color: '#666',
+    color: '#999',
   },
   dropdownArrow: {
     fontSize: 12,

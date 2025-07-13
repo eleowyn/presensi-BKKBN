@@ -17,6 +17,8 @@ import {
   ButtonNavAdmin,
   Admincard,
   TextInputAdmin,
+  UserDetailsCard,
+  ScanDetailsCard,
 } from './molecules/index';
 export {
   Button,
@@ -35,4 +37,6 @@ export {
   ButtonNavAdmin,
   Admincard,
   TextInputAdmin,
+  UserDetailsCard,
+  ScanDetailsCard,
 };
