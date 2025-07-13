@@ -1,5 +1,6 @@
 import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 
 interface AdminCardProps {
   status?: string;
@@ -14,6 +15,8 @@ const Admincard = ({
   nip = '105022310036',
   department = 'IT Department',
 }: AdminCardProps) => {
+  const navigation = useNavigation();
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Present':
@@ -43,8 +46,18 @@ const Admincard = ({
         };
     }
   };
+
+  const handlePress = () => {
+    navigation.navigate('UserDetail', {
+      name,
+      nip,
+      department,
+      status,
+    });
+  };
+
   return (
-    <TouchableOpacity>
+    <TouchableOpacity onPress={handlePress}>
       <View style={styles.card}>
         <View style={[styles.statusBadge, getStatusStyle(status).badge]}>
           <Text style={[styles.statusText, getStatusStyle(status).text]}>
@@ -74,6 +87,7 @@ const Admincard = ({
     </TouchableOpacity>
   );
 };
+
 
 const styles = StyleSheet.create({
   card: {

@@ -7,6 +7,7 @@ import Activity from './activity';
 import DashboardAdmin from './dashboard';
 import Scan from './scan';
 import Lists from './adminList';
+import UserDetail from './userDetails';
 export {
   SplashScreen,
   Login,
@@ -16,4 +17,5 @@ export {
   Activity,
   DashboardAdmin,
   Scan,
-  Lists};
+  Lists,
+  UserDetail};

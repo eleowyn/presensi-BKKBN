@@ -10,6 +10,7 @@ import {
   DashboardAdmin,
   Lists,
   Scan,
+  UserDetail,
 } from './src/pages';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
@@ -64,6 +65,11 @@ const App = () => {
         <Stack.Screen
           name="Lists"
           component={Lists}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="UserDetail"
+          component={UserDetail}
           options={{headerShown: false}}
         />
       </Stack.Navigator>
