@@ -1,42 +1,70 @@
-import {StyleSheet, View, ScrollView, SafeAreaView} from 'react-native';
-import React from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  SafeAreaView,
+  Text,
+  ActivityIndicator,
+} from 'react-native';
+import React, {useEffect, useState} from 'react';
 import {Buttonnavigation, Card, Header} from '../../components';
+import {getDatabase, ref, onValue} from 'firebase/database';
+import {getAuth} from 'firebase/auth';
 
 const Activity = ({navigation}) => {
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (user) {
+      const db = getDatabase();
+      const activitiesRef = ref(db, `activities/${user.uid}`);
+
+      const unsubscribe = onValue(activitiesRef, snapshot => {
+        const data = snapshot.val();
+        if (data) {
+          const formatted = Object.values(data);
+          setActivities(formatted);
+        } else {
+          setActivities([]);
+        }
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
+    } else {
+      setActivities([]);
+      setLoading(false);
+    }
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Header text="History" />
-        <Card
-          status="Late"
-          date="08 July 2025"
-          location="BKKBN Sulut"
-          time="07.30"
-          keterangan=""
-        />
-        <Card
-          status="Present"
-          date="08 July 2025"
-          location="BKKBN Sulut"
-          time="07.30"
-          keterangan=""
-        />
-        <Card
-          status="Excused"
-          date="08 July 2025"
-          location="BKKBN Sulut"
-          time="07.30"
-          keterangan=""
-        />
-        <Card
-          status="Unexcused"
-          date="08 July 2025"
-          location="BKKBN Sulut"
-          time="07.30"
-          keterangan=""
-        />
+        {loading ? (
+          <ActivityIndicator size="large" color="#0000ff" />
+        ) : activities.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No Activity</Text>
+          </View>
+        ) : (
+          activities.map((item, index) => (
+            <Card
+              key={index}
+              status={item.status}
+              date={item.date}
+              location={item.location}
+              time={item.time}
+              keterangan={item.keterangan || ''}
+            />
+          ))
+        )}
+        <View style={{marginBottom: 150}} />
       </ScrollView>
-      <View style={{marginBottom: 150}}></View>
       <Buttonnavigation navigation={navigation} />
     </SafeAreaView>
   );
@@ -49,5 +77,18 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     backgroundColor: 'white',
+  },
+  scrollContainer: {
+    paddingBottom: 150,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 50,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#888',
   },
 });
