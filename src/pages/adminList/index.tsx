@@ -1,23 +1,27 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {StyleSheet, Text, View, ScrollView} from 'react-native';
 import React from 'react';
-import { ButtonNavAdmin, Card, Header, TextInputAdmin } from '../../components';
+import {ButtonNavAdmin, Card, Header, TextInputAdmin} from '../../components';
 import Admincard from '../../components/molecules/adminCard';
 
-const Lists = () => {
+const Lists = ({navigation}) => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View>
-          <Header text="Lists"/>
+          <Header text="Lists" />
           <View style={styles.textinput}>
-            <TextInputAdmin style={styles.textinput1} text="Choose department" placeholder="Search Name"/>
-            <TextInputAdmin style={styles.textinput1}/>
+            <TextInputAdmin
+              style={styles.textinput1}
+              text="Choose department"
+              placeholder="Search Name"
+            />
+            <TextInputAdmin style={styles.textinput1} />
           </View>
           <View>
-            <Admincard/>
-            <Admincard/>
-            <Admincard/>
-            <Admincard/>
+            <Admincard />
+            <Admincard />
+            <Admincard />
+            <Admincard />
           </View>
         </View>
       </ScrollView>
@@ -28,4 +32,11 @@ const Lists = () => {
 
 export default Lists;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: '#FFFFFF',
+  },
+  textinput: {},
+  textinput1: {},
+  scrollView: {},
+});
