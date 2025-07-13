@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import React from 'react';
 
-const Lists = () => {
+const Lists = ({navigation}) => {
   return (
     <View>
       <Text>Lists</Text>

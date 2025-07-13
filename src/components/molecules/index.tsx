@@ -5,4 +5,14 @@ import OverallChart from './progressCard/overall';
 import Header from './header/header';
 import ProfileCard from './profile/profile';
 import ButtonNavAdmin from './buttonNavigationAdmin';
-export {Card, Buttonnavigation, WeeklyChart, OverallChart, Header, ProfileCard, ButtonNavAdmin};
+import Admincard from './adminCard';
+export {
+  Card,
+  Buttonnavigation,
+  WeeklyChart,
+  OverallChart,
+  Header,
+  ProfileCard,
+  ButtonNavAdmin,
+  Admincard,
+};

@@ -1,16 +1,22 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { HomeLogo, ActivityLogo} from '../../atoms';
+import {StyleSheet, Text, View, TouchableOpacity} from 'react-native';
+import {HomeLogo, ActivityLogo} from '../../atoms';
 
 const ButtonNavAdmin = ({navigation}) => {
+  console.log('navigation prop:', navigation);
+
   return (
     <View style={styles.navBar}>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Dashboard')}>
+      <TouchableOpacity
+        style={styles.navItem}
+        onPress={() => navigation.navigate('Dashboard')}>
         <HomeLogo />
         <Text style={styles.label}>Home</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Lists')}>
-        <ActivityLogo/>
+      <TouchableOpacity
+        style={styles.navItem}
+        onPress={() => navigation.navigate('Lists')}>
+        <ActivityLogo />
         <Text style={styles.label}>Lists</Text>
       </TouchableOpacity>
     </View>
