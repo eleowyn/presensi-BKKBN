@@ -16,4 +16,4 @@ export {
   Activity,
   DashboardAdmin,
   Scan,
-, Lists};
+  Lists};
