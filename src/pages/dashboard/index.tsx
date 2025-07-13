@@ -3,7 +3,7 @@ import { SafeAreaView, ScrollView, StyleSheet, View, Text, TextInput, TouchableO
 import { ButtonNavAdmin, Header } from '../../components';
 import Admincard from '../../components/molecules/adminCard';
 
-const DashboardAdmin = () => {
+const DashboardAdmin = ({navigation}) => {
   const [selectedDepartment, setSelectedDepartment] = useState('Select Department');
   const [searchName, setSearchName] = useState('');
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
@@ -78,7 +78,7 @@ const DashboardAdmin = () => {
             department = 'IT Department'/>
           </View>
         </ScrollView>
-        <ButtonNavAdmin />
+        <ButtonNavAdmin navigation={navigation}/>
       </View>
     </SafeAreaView>
   );

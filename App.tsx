@@ -13,6 +13,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import FlashMessage from 'react-native-flash-message';
 import Scan from './src/pages/scan';
+import Lists from './src/pages/adminList';
 
 const Stack = createNativeStackNavigator();
 
@@ -58,6 +59,11 @@ const App = () => {
         <Stack.Screen
           name="Dashboard"
           component={DashboardAdmin}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="Lists"
+          component={Lists}
           options={{headerShown: false}}
         />
       </Stack.Navigator>
