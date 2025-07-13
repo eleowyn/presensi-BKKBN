@@ -1,9 +1,9 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import React from 'react';
 import { ButtonNavAdmin, Card, Header, TextInputAdmin } from '../../components';
 import Admincard from '../../components/molecules/adminCard';
 
-const Lists = ({ navigation }) => {
+const Lists = () => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -28,16 +28,4 @@ const Lists = ({ navigation }) => {
 
 export default Lists;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  scrollView: {
-    flex: 1,
-    marginBottom: 150,
-  },
-  textinput1: {
-    marginBottom: 15,
-  },
-});
+const styles = StyleSheet.create({});

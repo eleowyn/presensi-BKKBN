@@ -1,26 +1,45 @@
-import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { ButtonNavAdmin, Header } from '../../components';
-import Admincard from '../../components/molecules/adminCard';
+import React, {useState} from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
+import {ButtonNavAdmin, Header, Admincard} from '../../components';
 
 const DashboardAdmin = ({navigation}) => {
-  const [selectedDepartment, setSelectedDepartment] = useState('Select Department');
+  console.log('DASHBOARD NAVIGATION:', navigation);
+
+  const [selectedDepartment, setSelectedDepartment] =
+    useState('Select Department');
   const [searchName, setSearchName] = useState('');
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
 
-  const departments = ['All Departments', 'IT Department', 'HR Department', 'Finance Department', 'Marketing Department'];
+  const departments = [
+    'All Departments',
+    'IT Department',
+    'HR Department',
+    'Finance Department',
+    'Marketing Department',
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentWrapper}>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <Header text="Admin"/>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}>
+          <Header text="Admin" />
           <View style={styles.filterContainer}>
             <View style={styles.filterRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.dropdownContainer}
-                onPress={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
-              >
+                onPress={() =>
+                  setShowDepartmentDropdown(!showDepartmentDropdown)
+                }>
                 <Text style={styles.dropdownText}>{selectedDepartment}</Text>
                 <Text style={styles.dropdownArrow}>▼</Text>
               </TouchableOpacity>
@@ -41,8 +60,7 @@ const DashboardAdmin = ({navigation}) => {
                     onPress={() => {
                       setSelectedDepartment(dept);
                       setShowDepartmentDropdown(false);
-                    }}
-                  >
+                    }}>
                     <Text style={styles.dropdownOptionText}>{dept}</Text>
                   </TouchableOpacity>
                 ))}
@@ -51,34 +69,39 @@ const DashboardAdmin = ({navigation}) => {
           </View>
 
           <View>
-            <Admincard 
-            status="Late"
-            name = 'Elshera Dahlan'
-            nip = '105022310036'
-            department = 'IT Department'/>
-            <Admincard 
-            status="Present"
-            name = 'Elshera Dahlan'
-            nip = '105022310036'
-            department = 'IT Department'/>
-            <Admincard 
-            status="Excused"
-            name = 'Elshera Dahlan'
-            nip = '105022310036'
-            department = 'IT Department'/>
-            <Admincard 
-            status="Unexcused"
-            name = 'Elshera Dahlan'
-            nip = '105022310036'
-            department = 'IT Department'/>
-            <Admincard 
-            status="Present"
-            name = 'Elshera Dahlan'
-            nip = '105022310036'
-            department = 'IT Department'/>
+            <Admincard
+              status="Late"
+              name="Elshera Dahlan"
+              nip="105022310036"
+              department="IT Department"
+            />
+            <Admincard
+              status="Present"
+              name="Elshera Dahlan"
+              nip="105022310036"
+              department="IT Department"
+            />
+            <Admincard
+              status="Excused"
+              name="Elshera Dahlan"
+              nip="105022310036"
+              department="IT Department"
+            />
+            <Admincard
+              status="Unexcused"
+              name="Elshera Dahlan"
+              nip="105022310036"
+              department="IT Department"
+            />
+            <Admincard
+              status="Present"
+              name="Elshera Dahlan"
+              nip="105022310036"
+              department="IT Department"
+            />
           </View>
         </ScrollView>
-        <ButtonNavAdmin navigation={navigation}/>
+        <ButtonNavAdmin navigation={navigation} />
       </View>
     </SafeAreaView>
   );
@@ -153,7 +176,7 @@ const styles = StyleSheet.create({
     borderColor: '#BEBBBB',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
     elevation: 3,
   },

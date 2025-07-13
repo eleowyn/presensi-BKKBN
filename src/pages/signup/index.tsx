@@ -31,7 +31,10 @@ const SignUp = ({navigation}) => {
             <Checkbox />
             <Text style={styles.terms}>I agree with terms</Text>
           </View>
-          <Button text="Sign In" />
+          <Button
+            text="Sign In"
+            onPress={() => navigation.navigate('Dashboard')}
+          />
           <View style={styles.loginContainer}>
             <Text style={styles.account}>Already have an account?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>

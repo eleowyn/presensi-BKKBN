@@ -15,6 +15,7 @@ import {
   Header,
   ProfileCard,
   ButtonNavAdmin,
+  Admincard,
   TextInputAdmin,
 } from './molecules/index';
 export {
@@ -32,5 +33,6 @@ export {
   Header,
   ProfileCard,
   ButtonNavAdmin,
+  Admincard,
   TextInputAdmin,
 };

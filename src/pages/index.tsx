@@ -7,4 +7,13 @@ import Activity from './activity';
 import DashboardAdmin from './dashboard';
 import Scan from './scan';
 import Lists from './adminList';
-export {SplashScreen, Login, SignUp, Account, Home, Activity, DashboardAdmin, Scan, Lists};
+export {
+  SplashScreen,
+  Login,
+  SignUp,
+  Account,
+  Home,
+  Activity,
+  DashboardAdmin,
+  Scan,
+, Lists};
