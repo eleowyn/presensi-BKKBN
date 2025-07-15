@@ -1,5 +1,5 @@
 import SplashScreen from './splashscreen/index';
-import Login from './login/index';
+import SignIn from './login';
 import SignUp from './signup';
 import Account from './account';
 import Home from './home';
@@ -10,7 +10,7 @@ import Lists from './adminList';
 import UserDetail from './userDetails';
 export {
   SplashScreen,
-  Login,
+  SignIn,
   SignUp,
   Account,
   Home,

@@ -11,13 +11,11 @@ import {
   Platform,
 } from 'react-native';
 import React, {useState} from 'react';
-import {Button, Buttonnavigation, Header} from '../../components';
 import {launchCamera} from 'react-native-image-picker';
 import {showMessage} from 'react-native-flash-message';
 import Geolocation from 'react-native-geolocation-service';
-import MapView, {Marker} from 'react-native-maps';
 
-const Scan = ({navigation}: {navigation: any}) => {
+const ScanTest = ({navigation}: {navigation: any}) => {
   const [tanggal, setTanggal] = useState('');
   const [waktu, setWaktu] = useState('');
   const [photoUri, setPhotoUri] = useState('');
@@ -159,7 +157,11 @@ const Scan = ({navigation}: {navigation: any}) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Header text="Absensi" />
+        {/* Simple Header without SVG */}
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Absensi Test</Text>
+        </View>
+        
         <View style={styles.content}>
           <View style={styles.photoSection}>
             <Text style={styles.sectionLabel}>Photo</Text>
@@ -179,6 +181,7 @@ const Scan = ({navigation}: {navigation: any}) => {
               </View>
             </TouchableOpacity>
           </View>
+          
           <View style={styles.bottomSection}>
             <View style={styles.formColumn}>
               <View style={styles.inputGroup}>
@@ -203,6 +206,7 @@ const Scan = ({navigation}: {navigation: any}) => {
                 />
               </View>
             </View>
+            
             <View style={styles.locationColumn}>
               <Text style={styles.sectionLabel}>Location</Text>
               <View style={styles.locationPlaceholder}>
@@ -215,21 +219,14 @@ const Scan = ({navigation}: {navigation: any}) => {
                     {locationError}
                   </Text>
                 ) : location ? (
-                  <MapView
-                    style={styles.map}
-                    initialRegion={{
-                      latitude: location.latitude,
-                      longitude: location.longitude,
-                      latitudeDelta: 0.005,
-                      longitudeDelta: 0.005,
-                    }}>
-                    <Marker
-                      coordinate={{
-                        latitude: location.latitude,
-                        longitude: location.longitude,
-                      }}
-                    />
-                  </MapView>
+                  <View style={styles.locationInfo}>
+                    <Text style={styles.locationText}>
+                      Lat: {location.latitude.toFixed(4)}
+                    </Text>
+                    <Text style={styles.locationText}>
+                      Lon: {location.longitude.toFixed(4)}
+                    </Text>
+                  </View>
                 ) : (
                   <Text style={styles.locationPlaceholderText}>
                     Location will appear here
@@ -239,21 +236,50 @@ const Scan = ({navigation}: {navigation: any}) => {
             </View>
           </View>
         </View>
-        <Button text="Confirm" />
+        
+        {/* Simple Button without custom component */}
+        <TouchableOpacity style={styles.confirmButton}>
+          <Text style={styles.confirmButtonText}>Confirm</Text>
+        </TouchableOpacity>
+        
         <View style={{marginBottom: 100}}></View>
       </ScrollView>
-      <Buttonnavigation navigation={navigation} />
+      
+      {/* Simple Navigation without SVG icons */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+          <Text style={styles.navText}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Scan')}>
+          <Text style={styles.navText}>Scan</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
+          <Text style={styles.navText}>History</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Account')}>
+          <Text style={styles.navText}>Account</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
 
-export default Scan;
+export default ScanTest;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
     backgroundColor: '#FFFFFF',
+  },
+  header: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000000',
   },
   content: {
     flex: 1,
@@ -265,11 +291,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionLabel: {
-    fontFamily: 'Poppins-Medium',
     fontSize: 14,
     color: '#000000',
     marginBottom: 10,
     alignSelf: 'center',
+    fontWeight: '500',
   },
   photoPlaceholder: {
     width: 350,
@@ -285,7 +311,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   photoPlaceholderText: {
-    fontFamily: 'Poppins-Regular',
     color: '#666666',
   },
   bottomSection: {
@@ -304,10 +329,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   inputLabel: {
-    fontFamily: 'Poppins-Medium',
     fontSize: 14,
     color: '#000000',
     marginBottom: 8,
+    fontWeight: '500',
   },
   dateTimeInput: {
     width: 180,
@@ -319,12 +344,6 @@ const styles = StyleSheet.create({
     borderColor: '#CFCFCF',
     backgroundColor: '#FFFFFF',
     fontSize: 13,
-    fontFamily: 'Poppins-Medium',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 4.3,
-    elevation: 8,
   },
   locationPlaceholder: {
     width: 170,
@@ -336,17 +355,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   locationPlaceholderText: {
-    fontFamily: 'Poppins-Regular',
     color: '#666666',
     textAlign: 'center',
   },
   locationErrorText: {
-    fontFamily: 'Poppins-Regular',
     color: '#FF6B6B',
     textAlign: 'center',
     fontSize: 12,
   },
-  map: {
-    ...StyleSheet.absoluteFillObject,
+  locationInfo: {
+    alignItems: 'center',
+  },
+  locationText: {
+    color: '#333333',
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  confirmButton: {
+    width: 345,
+    height: 55,
+    borderRadius: 13,
+    margin: 15,
+    alignSelf: 'center',
+    backgroundColor: '#1C272F',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    paddingVertical: 25,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DEDEDE',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  navText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#000000',
   },
 });

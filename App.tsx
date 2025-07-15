@@ -1,15 +1,12 @@
-import {View} from 'react-native';
 import React from 'react';
 import {
   Account,
   Activity,
   Home,
-  Login,
   SignUp,
   SplashScreen,
   DashboardAdmin,
   Lists,
-  Scan,
   UserDetail,
 } from './src/pages';
 import {NavigationContainer} from '@react-navigation/native';
@@ -17,6 +14,8 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import FlashMessage from 'react-native-flash-message';
 
 import './src/config/Firebase';
+import SignIn from './src/pages/login';
+import ScanTest from './src/pages/scan/test';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,7 +25,7 @@ const App = () => {
       <Stack.Navigator>
         <Stack.Screen
           name="Login"
-          component={Login}
+          component={SignIn}
           options={{headerShown: false}}
         />
         <Stack.Screen
@@ -47,7 +46,7 @@ const App = () => {
         />
         <Stack.Screen
           name="Scan"
-          component={Scan}
+          component={ScanTest}
           options={{headerShown: false}}
         />
         <Stack.Screen
