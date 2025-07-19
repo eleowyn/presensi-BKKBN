@@ -5,11 +5,12 @@ import {
   View,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {Button, Buttonnavigation, Header, ProfileCard, ProfilePicture} from '../../components';
 import {getAuth, signOut} from 'firebase/auth';
-import {getDatabase, ref, onValue} from 'firebase/database';
+import {getDatabase, ref, onValue, off} from 'firebase/database';
 import {showMessage} from 'react-native-flash-message';
 import {formatDate, getFirstName} from '../../config/Firebase/utils';
 
@@ -26,52 +27,104 @@ const Account = ({navigation}: {navigation: any}) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
     const fetchUserData = async () => {
       try {
         const auth = getAuth();
         const user = auth.currentUser;
 
-        if (user) {
-          const db = getDatabase();
-          const userRef = ref(db, `users/${user.uid}`);
-
-          onValue(
-            userRef,
-            snapshot => {
-              const data = snapshot.val();
-              if (data) {
-                setUserData(data);
-                // Set profile image if available
-                if (data.profilePictureBase64) {
-                  setProfileImage(data.profilePictureBase64);
-                }
-              }
-              setLoading(false);
-            },
-            error => {
-              console.error('Error reading user data:', error);
-              showMessage({
-                message: 'Error',
-                description: 'Failed to load user data',
-                type: 'danger',
-                duration: 3000,
-              });
-              setLoading(false);
-            },
-          );
-        } else {
-          // User not authenticated, redirect to login
+        if (!user) {
+          console.log('No authenticated user found');
           navigation.replace('Login');
+          return;
         }
+
+        console.log('Fetching data for user:', user.uid);
+
+        const db = getDatabase();
+        const userRef = ref(db, `users/${user.uid}`);
+
+        // Set up real-time listener
+        const listener = onValue(
+          userRef,
+          (snapshot) => {
+            console.log('Snapshot received:', snapshot.exists());
+            
+            if (snapshot.exists()) {
+              const data = snapshot.val();
+              console.log('User data:', data);
+              
+              setUserData(data);
+              
+              // Set profile image if available
+              if (data.profilePictureBase64) {
+                setProfileImage(data.profilePictureBase64);
+              }
+              
+              setError(null);
+            } else {
+              console.log('No user data found, using auth data as fallback');
+              
+              // If no user data in database, create basic profile from auth
+              const fallbackData: UserData = {
+                fullName: user.displayName || 'Unknown User',
+                email: user.email || 'No email',
+                department: 'Not specified',
+                NIP: 'Not specified',
+                startDate: new Date().toISOString(),
+              };
+              
+              setUserData(fallbackData);
+              setError('Profile data not found. Please complete your profile.');
+            }
+            
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Firebase error:', error);
+            
+            let errorMessage = 'Failed to load user data';
+            
+            if (error.code === 'PERMISSION_DENIED') {
+              errorMessage = 'Permission denied. Please check your Firebase security rules.';
+            } else if (error.code === 'NETWORK_ERROR') {
+              errorMessage = 'Network error. Please check your internet connection.';
+            }
+            
+            setError(errorMessage);
+            setLoading(false);
+            
+            showMessage({
+              message: 'Database Error',
+              description: errorMessage,
+              type: 'danger',
+              duration: 5000,
+            });
+          }
+        );
+
+        // Store the unsubscribe function
+        unsubscribe = () => off(userRef, 'value', listener);
+
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Setup error:', error);
+        setError('Failed to initialize user data');
         setLoading(false);
       }
     };
 
     fetchUserData();
+
+    // Cleanup function
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [navigation]);
 
   const handleImageUpdate = (base64Image: string) => {
@@ -120,11 +173,32 @@ const Account = ({navigation}: {navigation: any}) => {
     );
   };
 
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    // Re-trigger the useEffect by updating a state
+    // This will re-run the data fetching logic
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text style={styles.loadingText}>Loading user data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !userData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Unable to Load Profile</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button text="Retry" onPress={handleRetry} />
+          <Button text="Logout" onPress={handleLogout} />
         </View>
       </SafeAreaView>
     );
@@ -137,6 +211,13 @@ const Account = ({navigation}: {navigation: any}) => {
           <View>
             <Header text="Account" />
           </View>
+          
+          {error && (
+            <View style={styles.warningContainer}>
+              <Text style={styles.warningText}>{error}</Text>
+            </View>
+          )}
+          
           <View style={styles.profile}>
             <ProfilePicture
               currentImage={profileImage}
@@ -145,13 +226,14 @@ const Account = ({navigation}: {navigation: any}) => {
             />
             <View style={styles.subprofile}>
               <Text style={styles.name}>
-                {getFirstName(userData?.fullName || '')}
+                {getFirstName(userData?.fullName || 'User')}
               </Text>
               <Text style={styles.email}>
                 {userData?.email || 'No email available'}
               </Text>
             </View>
           </View>
+          
           <View style={styles.card}>
             <ProfileCard 
               text="Department" 
@@ -192,6 +274,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins-Medium',
     color: '#666',
+    marginTop: 10,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins-Bold',
+    color: '#d32f2f',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  warningContainer: {
+    backgroundColor: '#fff3cd',
+    borderColor: '#ffeaa7',
+    borderWidth: 1,
+    padding: 10,
+    margin: 20,
+    borderRadius: 5,
+  },
+  warningText: {
+    color: '#856404',
+    fontSize: 14,
+    textAlign: 'center',
   },
   profile: {
     flexDirection: 'row',

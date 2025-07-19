@@ -1,5 +1,5 @@
-import {StyleSheet, View, ScrollView, SafeAreaView} from 'react-native';
-import React, {useEffect, useState} from 'react';
+import {StyleSheet, View, SafeAreaView} from 'react-native';
+import React from 'react';
 import {Buttonnavigation, Card, Header} from '../../components';
 import {getDatabase, ref, onValue} from 'firebase/database';
 
@@ -41,19 +41,8 @@ const Activity = ({navigation}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <Header text="History" />
-        {activities.map(activity => (
-          <Card
-            key={activity.id}
-            status={activity.status}
-            date={activity.date}
-            location={activity.location}
-            time={activity.time}
-            keterangan={activity.keterangan}
-          />
-        ))}
-      </ScrollView>
+      <Header text="History" />
+      <Card />
       <View style={{marginBottom: 150}}></View>
       <Buttonnavigation navigation={navigation} />
     </SafeAreaView>
