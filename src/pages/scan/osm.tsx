@@ -546,31 +546,6 @@ const Scan = ({navigation}: {navigation: any}) => {
                   style={[styles.dateTimeInput, styles.locationInput]}
                 />
               </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Postal Code</Text>
-                <RNTextInput
-                  value={kodePos}
-                  editable={false}
-                  style={styles.dateTimeInput}
-                />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Latitude</Text>
-                <RNTextInput
-                  value={latitude}
-                  editable={false}
-                  style={styles.dateTimeInput}
-                />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Longitude</Text>
-                <RNTextInput
-                  value={longitude}
-                  editable={false}
-                  style={styles.dateTimeInput}
-                />
-              </View>
             </View>
           </View>
         </View>
@@ -661,7 +636,7 @@ const styles = StyleSheet.create({
   },
   dateTimeInput: {
     width: 345,
-    height: 100,
+    height: 85,
     borderWidth: 2,
     borderRadius: 25,
     paddingHorizontal: 15,
