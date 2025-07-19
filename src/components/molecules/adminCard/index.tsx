@@ -6,11 +6,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {getDatabase, ref, onValue, off} from 'firebase/database';
-import {getAuth} from 'firebase/auth';
-import {showMessage} from 'react-native-flash-message';
+import {getDatabase, ref, onValue} from 'firebase/database';
 
 interface UserData {
   fullName?: string;
@@ -34,7 +33,7 @@ interface AttendanceData {
 }
 
 interface AdminCardProps {
-  userId: string; // Required prop to identify which user's data to fetch
+  userId: string;
   onPress?: () => void;
 }
 
@@ -45,40 +44,66 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get today's date in format used by your app
   const getTodayDate = () => {
-    const today = new Date();
-    return today.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
+    try {
+      const today = new Date();
+      return today.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (err) {
+      console.error('Error getting today date:', err);
+      return new Date().toISOString().split('T')[0];
+    }
   };
 
-  // Determine attendance status based on time
   const getAttendanceStatus = (waktu?: string): string => {
-    if (!todayAttendance || !waktu) {
-      return 'Absent';
+    try {
+      if (!todayAttendance || !waktu) {
+        return 'Absent';
+      }
+      
+      const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
+      const timeInMinutes = hours * 60 + minutes;
+      const onTimeThreshold = 8 * 60;
+      const lateThreshold = 8 * 60 + 30;
+      
+      if (timeInMinutes <= onTimeThreshold) {
+        return 'Present';
+      } else if (timeInMinutes <= lateThreshold) {
+        return 'Late';
+      } else {
+        return 'Late';
+      }
+    } catch (err) {
+      console.error('Error calculating attendance status:', err);
+      return 'Unknown';
     }
+  };
+
+  const createFallbackUserData = (id: string): UserData => {
+    // Add safety check for userId
+    const safeId = id || 'unknown';
+    const displayId = safeId.length >= 8 ? safeId.substring(0, 8) : safeId;
     
-    // Extract hour and minute from time string (format: "HH:MM")
-    const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
-    const timeInMinutes = hours * 60 + minutes;
-    
-    // Define time thresholds (adjust according to your business rules)
-    const onTimeThreshold = 8 * 60; // 08:00 in minutes
-    const lateThreshold = 8 * 60 + 30; // 08:30 in minutes
-    
-    if (timeInMinutes <= onTimeThreshold) {
-      return 'Present';
-    } else if (timeInMinutes <= lateThreshold) {
-      return 'Late';
-    } else {
-      return 'Late';
-    }
+    return {
+      fullName: 'User ' + displayId,
+      email: 'No email provided',
+      department: 'Unknown',
+      NIP: safeId
+    };
   };
 
   useEffect(() => {
+    // Add early return if userId is not provided
+    if (!userId) {
+      console.error('AdminCard: userId is required but not provided');
+      setError('User ID is required');
+      setLoading(false);
+      return;
+    }
+
     let userUnsubscribe: (() => void) | null = null;
     let attendanceUnsubscribe: (() => void) | null = null;
 
@@ -88,56 +113,87 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
         
         // Fetch user data
         const userRef = ref(db, `users/${userId}`);
-        const userListener = onValue(
+        userUnsubscribe = onValue(
           userRef,
           (snapshot) => {
-            if (snapshot.exists()) {
-              const data = snapshot.val();
-              setUserData(data);
-            } else {
-              setError('User data not found');
+            try {
+              if (snapshot.exists()) {
+                const data = snapshot.val();
+                setUserData(data);
+                setError(null);
+              } else {
+                // Handle case where user exists but has no profile data
+                const attendanceRef = ref(db, `attendance/${userId}`);
+                onValue(attendanceRef, (attendanceSnapshot) => {
+                  try {
+                    if (attendanceSnapshot.exists()) {
+                      setUserData(createFallbackUserData(userId));
+                      setError(null);
+                    } else {
+                      setUserData(createFallbackUserData(userId));
+                      setError(null);
+                    }
+                  } catch (innerErr) {
+                    console.error('Error processing attendance snapshot:', innerErr);
+                    setError('Failed to process user data');
+                  }
+                });
+              }
+            } catch (err) {
+              console.error('Error processing user snapshot:', err);
+              setError('Failed to process user data');
             }
           },
-          (error) => {
-            console.error('Firebase user data error:', error);
-            setError('Failed to load user data');
+          (err) => {
+            console.error('Firebase user data error:', err);
+            setUserData(createFallbackUserData(userId));
+            setError(null);
           }
         );
 
-        userUnsubscribe = () => off(userRef, 'value', userListener);
-
-        // Fetch today's attendance data
+        // Fetch attendance data
         const attendanceRef = ref(db, `attendance/${userId}`);
-        const attendanceListener = onValue(
+        attendanceUnsubscribe = onValue(
           attendanceRef,
           (snapshot) => {
-            if (snapshot.exists()) {
-              const data = snapshot.val();
-              const todayDate = getTodayDate();
+            try {
+              if (snapshot.exists()) {
+                const data = snapshot.val();
+                let attendanceArray: AttendanceData[] = [];
+                
+                if (Array.isArray(data)) {
+                  attendanceArray = data.filter((item: any) => item && item.timestamp);
+                } else if (typeof data === 'object') {
+                  attendanceArray = Object.values(data).filter((item: any) => item && item.timestamp);
+                }
+                
+                attendanceArray.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                
+                const todayDate = getTodayDate();
+                const todayRecord = attendanceArray.find(
+                  (record) => record.tanggal === todayDate
+                );
+                
+                setTodayAttendance(todayRecord || null);
+              } else {
+                setTodayAttendance(null);
+              }
               
-              // Find today's attendance
-              const todayRecord = Object.values(data).find(
-                (record: any) => record.tanggal === todayDate
-              ) as AttendanceData;
-              
-              setTodayAttendance(todayRecord || null);
-            } else {
-              setTodayAttendance(null);
+              setLoading(false);
+            } catch (err) {
+              console.error('Error processing attendance data:', err);
+              setLoading(false);
+              setError('Failed to process attendance data');
             }
-            
-            setLoading(false);
           },
-          (error) => {
-            console.error('Firebase attendance data error:', error);
-            // Don't set error for attendance, just set loading to false
+          (err) => {
+            console.error('Firebase attendance data error:', err);
             setLoading(false);
           }
         );
 
-        attendanceUnsubscribe = () => off(attendanceRef, 'value', attendanceListener);
-
-      } catch (error) {
-        console.error('Setup error:', error);
+      } catch (err) {
+        console.error('Setup error:', err);
         setError('Failed to initialize data');
         setLoading(false);
       }
@@ -145,13 +201,12 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
 
     fetchData();
 
-    // Cleanup function
     return () => {
-      if (userUnsubscribe) {
-        userUnsubscribe();
-      }
-      if (attendanceUnsubscribe) {
-        attendanceUnsubscribe();
+      try {
+        if (userUnsubscribe) userUnsubscribe();
+        if (attendanceUnsubscribe) attendanceUnsubscribe();
+      } catch (err) {
+        console.error('Error during cleanup:', err);
       }
     };
   }, [userId]);
@@ -188,18 +243,30 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
   };
 
   const handlePress = () => {
-    if (onPress) {
-      onPress();
-    } else if (userData) {
-      navigation.navigate('UserDetail', {
-        userId,
-        name: userData.fullName || 'Unknown User',
-        nip: userData.NIP || 'Not specified',
-        department: userData.department || 'Not specified',
-        email: userData.email || 'No email',
-        status: getAttendanceStatus(todayAttendance?.waktu),
-        attendanceData: todayAttendance,
-      });
+    try {
+      if (onPress) {
+        onPress();
+      } else if (userData && navigation) {
+        const navigationParams = {
+          userId,
+          name: userData.fullName || 'Unknown User',
+          nip: userData.NIP || 'Not specified',
+          department: userData.department || 'Not specified',
+          email: userData.email || 'No email',
+          status: getAttendanceStatus(todayAttendance?.waktu),
+          attendanceData: todayAttendance,
+        };
+        
+        console.log('Navigating with params:', navigationParams);
+        navigation.navigate('UserDetail' as never, navigationParams as never);
+      }
+    } catch (err) {
+      console.error('Error during navigation:', err);
+      Alert.alert(
+        'Navigation Error',
+        'Failed to open user details. Please try again.',
+        [{text: 'OK', style: 'default'}]
+      );
     }
   };
 
@@ -286,6 +353,9 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
               source={{uri: userData.profilePictureBase64}}
               style={styles.profileImage}
               resizeMode="cover"
+              onError={(err) => {
+                console.error('Image load error:', err);
+              }}
             />
           ) : (
             <View style={styles.placeholderImage}>

@@ -15,56 +15,88 @@ import {getAuth} from 'firebase/auth';
 import app from '../../../config/Firebase'; // Adjust path as needed
 import {showMessage} from 'react-native-flash-message';
 
+interface LocationData {
+  address?: string;
+  fullAddress?: string;
+  accuracy?: number;
+  isHighAccuracy?: boolean;
+  placeName?: string;
+}
+
+interface AttendanceItem {
+  id: string;
+  tanggal?: string;
+  waktu?: string;
+  location?: LocationData;
+  timestamp?: number;
+  photo?: string;
+}
+
 const Card = () => {
-  const [attendanceData, setAttendanceData] = useState([]);
+  const [attendanceData, setAttendanceData] = useState<AttendanceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Get current user
   const getCurrentUser = () => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    
-    if (!user) {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        return null;
+      }
+      
+      return {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        phoneNumber: user.phoneNumber,
+      };
+    } catch (error) {
+      console.error('Error getting current user:', error);
       return null;
     }
-    
-    return {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      phoneNumber: user.phoneNumber,
-    };
   };
 
   // Convert timestamp to readable date
-  const formatDate = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
+  const formatDate = (timestamp: number) => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
+    }
   };
 
   // Determine attendance status based on time
-  const getAttendanceStatus = (waktu) => {
+  const getAttendanceStatus = (waktu?: string) => {
     if (!waktu) return 'Unknown';
     
-    // Extract hour and minute from time string (format: "HH:MM")
-    const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
-    const timeInMinutes = hours * 60 + minutes;
-    
-    // Define time thresholds (adjust according to your business rules)
-    const onTimeThreshold = 8 * 60; // 08:00 in minutes
-    const lateThreshold = 8 * 60 + 30; // 08:30 in minutes
-    
-    if (timeInMinutes <= onTimeThreshold) {
-      return 'Present';
-    } else if (timeInMinutes <= lateThreshold) {
-      return 'Late';
-    } else {
-      return 'Late';
+    try {
+      // Extract hour and minute from time string (format: "HH:MM")
+      const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
+      const timeInMinutes = hours * 60 + minutes;
+      
+      // Define time thresholds (adjust according to your business rules)
+      const onTimeThreshold = 8 * 60; // 08:00 in minutes
+      const lateThreshold = 8 * 60 + 30; // 08:30 in minutes
+      
+      if (timeInMinutes <= onTimeThreshold) {
+        return 'Present';
+      } else if (timeInMinutes <= lateThreshold) {
+        return 'Late';
+      } else {
+        return 'Late';
+      }
+    } catch (error) {
+      console.error('Error calculating attendance status:', error);
+      return 'Unknown';
     }
   };
 
@@ -79,7 +111,7 @@ const Card = () => {
         description: 'User tidak terautentikasi. Silakan login kembali.',
         type: 'danger',
       });
-      return;
+      return null;
     }
 
     try {
@@ -87,50 +119,79 @@ const Card = () => {
       const userAttendanceRef = ref(database, `attendance/${currentUser.uid}`);
       
       // Listen for data changes
-      const unsubscribe = onValue(userAttendanceRef, (snapshot) => {
-        const data = snapshot.val();
-        
-        if (data) {
-          // Convert object to array and sort by timestamp (newest first)
-          const attendanceArray = Object.keys(data).map(key => ({
-            id: key,
-            ...data[key],
-          })).sort((a, b) => b.timestamp - a.timestamp);
-          
-          setAttendanceData(attendanceArray);
-        } else {
-          setAttendanceData([]);
+      const unsubscribe = onValue(
+        userAttendanceRef, 
+        (snapshot) => {
+          try {
+            const data = snapshot.val();
+            
+            if (data) {
+              // Convert object to array and sort by timestamp (newest first)
+              const attendanceArray: AttendanceItem[] = Object.keys(data).map(key => ({
+                id: key,
+                ...data[key],
+              })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+              
+              setAttendanceData(attendanceArray);
+            } else {
+              setAttendanceData([]);
+            }
+            
+            setLoading(false);
+            setRefreshing(false);
+          } catch (error) {
+            console.error('Error processing attendance data:', error);
+            setAttendanceData([]);
+            setLoading(false);
+            setRefreshing(false);
+          }
+        }, 
+        (error) => {
+          console.error('Firebase fetch error:', error);
+          showMessage({
+            message: 'Error',
+            description: 'Gagal mengambil data absensi: ' + error.message,
+            type: 'danger',
+          });
+          setLoading(false);
+          setRefreshing(false);
         }
-        
-        setLoading(false);
-        setRefreshing(false);
-      }, (error) => {
-        console.error('Firebase fetch error:', error);
-        showMessage({
-          message: 'Error',
-          description: 'Gagal mengambil data absensi: ' + error.message,
-          type: 'danger',
-        });
-        setLoading(false);
-        setRefreshing(false);
-      });
+      );
 
-      // Return cleanup function
-      return () => off(userAttendanceRef, 'value', unsubscribe);
+      // Return cleanup function that properly removes the listener
+      return () => {
+        try {
+          off(userAttendanceRef, 'value', unsubscribe);
+        } catch (error) {
+          console.error('Error removing Firebase listener:', error);
+        }
+      };
     } catch (error) {
       console.error('Error setting up Firebase listener:', error);
       setLoading(false);
       setRefreshing(false);
+      return null;
     }
   };
 
   useEffect(() => {
-    const cleanup = fetchAttendanceData();
+    let cleanup: (() => void) | null = null;
+    
+    try {
+      cleanup = fetchAttendanceData();
+    } catch (error) {
+      console.error('Error in useEffect:', error);
+      setLoading(false);
+    }
     
     // Cleanup function
     return () => {
       if (cleanup && typeof cleanup === 'function') {
-        cleanup();
+        try {
+          cleanup();
+        } catch (error) {
+          console.error('Error during cleanup:', error);
+        }
       }
     };
   }, []);
@@ -138,11 +199,16 @@ const Card = () => {
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
-    fetchAttendanceData();
+    try {
+      fetchAttendanceData();
+    } catch (error) {
+      console.error('Error during refresh:', error);
+      setRefreshing(false);
+    }
   };
 
   // Get status style
-  const getStatusStyle = (status) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Present':
         return {
@@ -173,82 +239,103 @@ const Card = () => {
   };
 
   // Handle card press to show more details
-  const handleCardPress = (item) => {
-    Alert.alert(
-      'Detail Absensi',
-      `Tanggal: ${item.tanggal}\nWaktu: ${item.waktu}\nLokasi: ${item.location?.address || 'Tidak diketahui'}\nAlamat Lengkap: ${item.location?.fullAddress || 'Tidak diketahui'}\nAkurasi: ±${item.location?.accuracy?.toFixed(1) || 0}m\nStatus Akurasi: ${item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'}`,
-      [
-        {
-          text: 'Tutup',
-          style: 'cancel',
-        },
-      ]
-    );
+  const handleCardPress = (item: AttendanceItem) => {
+    try {
+      Alert.alert(
+        'Detail Absensi',
+        `Tanggal: ${item.tanggal || 'Tidak diketahui'}\nWaktu: ${item.waktu || 'Tidak diketahui'}\nLokasi: ${item.location?.address || 'Tidak diketahui'}\nAlamat Lengkap: ${item.location?.fullAddress || 'Tidak diketahui'}\nAkurasi: ±${item.location?.accuracy?.toFixed(1) || 0}m\nStatus Akurasi: ${item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'}`,
+        [
+          {
+            text: 'Tutup',
+            style: 'cancel',
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error showing card details:', error);
+      showMessage({
+        message: 'Error',
+        description: 'Gagal menampilkan detail absensi',
+        type: 'danger',
+      });
+    }
   };
 
   // Render single card item
-  const renderCardItem = ({item}) => {
-    const status = getAttendanceStatus(item.waktu);
-    const displayLocation = item.location?.placeName 
-      ? `${item.location.placeName}` 
-      : item.location?.address || 'Lokasi tidak diketahui';
+  const renderCardItem = ({item}: {item: AttendanceItem}) => {
+    try {
+      const status = getAttendanceStatus(item.waktu);
+      const displayLocation = item.location?.placeName 
+        ? `${item.location.placeName}` 
+        : item.location?.address || 'Lokasi tidak diketahui';
 
-    return (
-      <TouchableOpacity onPress={() => handleCardPress(item)}>
-        <View style={styles.card}>
-          <View style={[styles.statusBadge, getStatusStyle(status).badge]}>
-            <Text style={[styles.statusText, getStatusStyle(status).text]}>
-              {status}
-            </Text>
-          </View>
-          
-          <View style={styles.detailsContainer}>
-            <View style={styles.textSection}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Date:</Text>
-                <Text style={styles.value}>{item.tanggal}</Text>
-              </View>
-              
-              <View style={styles.row}>
-                <Text style={styles.label}>Location:</Text>
-                <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
-                  {displayLocation}
-                </Text>
-              </View>
-              
-              <View style={styles.row}>
-                <Text style={styles.label}>Start Time:</Text>
-                <Text style={styles.value}>{item.waktu}</Text>
-              </View>
-              
-              <View style={styles.row}>
-                <Text style={styles.label}>Accuracy:</Text>
-                <Text style={[
-                  styles.value,
-                  item.location?.isHighAccuracy ? styles.highAccuracy : styles.lowAccuracy
-                ]}>
-                  {item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'} (±{item.location?.accuracy?.toFixed(1) || 0}m)
-                </Text>
-              </View>
+      return (
+        <TouchableOpacity onPress={() => handleCardPress(item)}>
+          <View style={styles.card}>
+            <View style={[styles.statusBadge, getStatusStyle(status).badge]}>
+              <Text style={[styles.statusText, getStatusStyle(status).text]}>
+                {status}
+              </Text>
             </View>
             
-            <View style={styles.imageContainer}>
-              {item.photo ? (
-                <Image
-                  source={{uri: item.photo}}
-                  style={styles.imageBox}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={[styles.imageBox, styles.noImageBox]}>
-                  <Text style={styles.noImageText}>No Photo</Text>
+            <View style={styles.detailsContainer}>
+              <View style={styles.textSection}>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Date:</Text>
+                  <Text style={styles.value}>{item.tanggal || 'Tidak diketahui'}</Text>
                 </View>
-              )}
+                
+                <View style={styles.row}>
+                  <Text style={styles.label}>Location:</Text>
+                  <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
+                    {displayLocation}
+                  </Text>
+                </View>
+                
+                <View style={styles.row}>
+                  <Text style={styles.label}>Start Time:</Text>
+                  <Text style={styles.value}>{item.waktu || 'Tidak diketahui'}</Text>
+                </View>
+                
+                <View style={styles.row}>
+                  <Text style={styles.label}>Accuracy:</Text>
+                  <Text style={[
+                    styles.value,
+                    item.location?.isHighAccuracy ? styles.highAccuracy : styles.lowAccuracy
+                  ]}>
+                    {item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'} (±{item.location?.accuracy?.toFixed(1) || 0}m)
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.imageContainer}>
+                {item.photo ? (
+                  <Image
+                    source={{uri: item.photo}}
+                    style={styles.imageBox}
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.error('Image load error:', error);
+                    }}
+                  />
+                ) : (
+                  <View style={[styles.imageBox, styles.noImageBox]}>
+                    <Text style={styles.noImageText}>No Photo</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
+        </TouchableOpacity>
+      );
+    } catch (error) {
+      console.error('Error rendering card item:', error);
+      return (
+        <View style={styles.card}>
+          <Text style={styles.errorText}>Error loading attendance record</Text>
         </View>
-      </TouchableOpacity>
-    );
+      );
+    }
   };
 
   // Render empty state
@@ -289,6 +376,9 @@ const Card = () => {
         contentContainerStyle={
           attendanceData.length === 0 ? styles.emptyListContainer : null
         }
+        onError={(error) => {
+          console.error('FlatList error:', error);
+        }}
       />
     </View>
   );
@@ -411,6 +501,12 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  errorText: {
+    color: '#E53E3E',
+    fontSize: 12,
+    textAlign: 'center',
+    fontFamily: 'Poppins-Regular',
   },
 });
 
