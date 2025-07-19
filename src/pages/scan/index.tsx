@@ -7,32 +7,166 @@ import {
   TextInput as RNTextInput,
   TouchableOpacity,
   Image,
-  PermissionsAndroid, // Import PermissionsAndroid for Android location permissions
-  Platform, // Import Platform to check OS
+  PermissionsAndroid,
+  Platform,
+  Linking,
+  ActivityIndicator
 } from 'react-native';
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import {Button, Buttonnavigation, Header} from '../../components';
 import {launchCamera} from 'react-native-image-picker';
 import {showMessage} from 'react-native-flash-message';
-import Geolocation from 'react-native-geolocation-service'; // Import Geolocation
+import Geolocation from 'react-native-geolocation-service';
+import axios from 'axios';
+import {getDatabase, ref, push} from 'firebase/database';
+import {getAuth} from 'firebase/auth'; // Add this import
+import app from '../../config/Firebase'; // Adjust path as needed
 
 const Scan = ({navigation}: {navigation: any}) => {
-  const [tanggal, setTanggal] = useState(''); // Ubah menjadi string kosong agar bisa diisi otomatis
-  const [waktu, setWaktu] = useState(''); // Ubah menjadi string kosong agar bisa diisi otomatis
-  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [tanggal, setTanggal] = useState('');
+  const [waktu, setWaktu] = useState('');
+  const [photo, setPhoto] = useState<{uri: string, base64?: string} | null>(null);
   const [location, setLocation] = useState<{
     latitude: number | null;
     longitude: number | null;
     accuracy: number | null;
+    address: string | null;
+    fullAddress: string | null;
+    placeName: string | null;
     error: string | null;
-  }>({latitude: null, longitude: null, accuracy: null, error: null});
+    isHighAccuracy: boolean;
+  }>({
+    latitude: null,
+    longitude: null,
+    accuracy: null,
+    address: null,
+    fullAddress: null,
+    placeName: null,
+    error: null,
+    isHighAccuracy: false,
+  });
+  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * Fungsi untuk meminta izin lokasi dari pengguna.
-   */
+  // Get current user function
+  const getCurrentUser = () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    return {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      phoneNumber: user.phoneNumber,
+    };
+  };
+
+  // Multiple geocoding services for better accuracy and place names
+  const getLocationDetails = async (lat: number, lon: number) => {
+    try {
+      // Try multiple services for better accuracy
+      const results = await Promise.allSettled([
+        // Nominatim (OpenStreetMap) - Free
+        axios.get(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&extratags=1&namedetails=1`,
+          {
+            headers: {
+              'User-Agent': 'AttendanceApp/1.0 (contact@example.com)',
+            },
+            timeout: 10000,
+          },
+        ),
+        // LocationIQ - Alternative service (free tier available)
+        axios.get(
+          `https://us1.locationiq.com/v1/reverse.php?key=YOUR_LOCATIONIQ_KEY&lat=${lat}&lon=${lon}&format=json&zoom=18&addressdetails=1`,
+          {
+            timeout: 8000,
+          },
+        ).catch(() => null), // Fallback if no API key
+      ]);
+
+      let bestResult = null;
+      let placeName = null;
+
+      // Process Nominatim result
+      if (results[0].status === 'fulfilled') {
+        const data = results[0].value.data;
+        const {address, display_name, namedetails} = data;
+        
+        // Extract place name from various sources
+        placeName = namedetails?.name || 
+                   address?.amenity || 
+                   address?.building || 
+                   address?.shop || 
+                   address?.office || 
+                   address?.leisure || 
+                   address?.tourism ||
+                   address?.public_building ||
+                   null;
+
+        const road = address.road || address.pedestrian || '';
+        const houseNumber = address.house_number || '';
+        const village = address.village || address.hamlet || '';
+        const suburb = address.suburb || address.neighbourhood || '';
+        const city = address.city || address.town || address.municipality || '';
+        const state = address.state || address.province || '';
+        const postcode = address.postcode || '';
+        const country = address.country || '';
+        
+        // Build short address with house number
+        const addressParts = [
+          houseNumber && road ? `${road} ${houseNumber}` : road,
+          village,
+          suburb,
+          city
+        ].filter(Boolean);
+        
+        const shortAddress = addressParts.length > 0 ? addressParts.join(', ') : 'Lokasi tidak dikenal';
+        
+        // Full detailed address
+        const fullAddress = [
+          houseNumber && road ? `${road} ${houseNumber}` : road,
+          village,
+          suburb,
+          city,
+          state,
+          postcode,
+          country
+        ].filter(Boolean).join(', ') || 'Lokasi tidak dikenal';
+
+        bestResult = {
+          shortAddress,
+          fullAddress,
+          placeName,
+          source: 'OpenStreetMap'
+        };
+      }
+
+      // If LocationIQ was successful and we don't have a good result, use it
+      if (!bestResult && results[1].status === 'fulfilled' && results[1].value) {
+        const data = results[1].value.data;
+        // Process LocationIQ result similar to above
+        bestResult = {
+          shortAddress: data.display_name?.split(',').slice(0, 3).join(', ') || 'Lokasi tidak dikenal',
+          fullAddress: data.display_name || 'Lokasi tidak dikenal',
+          placeName: data.namedetails?.name || null,
+          source: 'LocationIQ'
+        };
+      }
+
+      return bestResult;
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      return null;
+    }
+  };
+
   const requestLocationPermission = async () => {
     if (Platform.OS === 'ios') {
-      // Untuk iOS, izin diminta saat pertama kali mencoba mengakses lokasi
       const status = await Geolocation.requestAuthorization('whenInUse');
       return status === 'granted';
     } else if (Platform.OS === 'android') {
@@ -40,8 +174,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
           title: 'Izin Lokasi',
-          message:
-            'Aplikasi ini memerlukan akses lokasi Anda untuk mencatat absensi.',
+          message: 'Aplikasi ini memerlukan akses lokasi Anda untuk absensi.',
           buttonNeutral: 'Nanti',
           buttonNegative: 'Tolak',
           buttonPositive: 'Izinkan',
@@ -52,334 +185,604 @@ const Scan = ({navigation}: {navigation: any}) => {
     return false;
   };
 
-  /**
-   * Fungsi untuk mendapatkan tanggal, waktu, dan lokasi saat ini.
-   */
   const fetchDateTimeAndLocation = async () => {
-    // 1. Dapatkan Tanggal dan Waktu Saat Ini
+    setLoading(true);
+    
+    // Date and Time
     const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // Bulan dimulai dari 0
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
+    setTanggal(now.toLocaleDateString('id-ID'));
+    setWaktu(now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}));
 
-    setTanggal(`${day}/${month}/${year}`);
-    setWaktu(`${hours}.${minutes}`);
+    // Location with MAXIMUM accuracy settings
+    try {
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        throw new Error('Izin lokasi ditolak');
+      }
 
-    // 2. Dapatkan Lokasi Saat Ini
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) {
-      showMessage({
-        message: 'Izin Ditolak',
-        description:
-          'Aplikasi tidak memiliki izin lokasi. Lokasi tidak dapat diambil.',
-        type: 'warning',
-        icon: 'warning',
-        duration: 4000,
-      });
+      // Multiple location attempts for maximum accuracy
+      let bestPosition = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (attempts < maxAttempts && (!bestPosition || bestPosition.coords.accuracy > 10)) {
+        attempts++;
+        
+        try {
+          console.log(`Location attempt ${attempts}/${maxAttempts}`);
+          
+          const position = await new Promise((resolve, reject) => {
+            const watchId = Geolocation.watchPosition(
+              (pos) => {
+                // Accept position if accuracy is very good (< 10m) or after timeout
+                if (pos.coords.accuracy <= 10 || Date.now() - startTime > 15000) {
+                  Geolocation.clearWatch(watchId);
+                  resolve(pos);
+                }
+              },
+              (error) => {
+                Geolocation.clearWatch(watchId);
+                reject(error);
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0, // Always get fresh location
+                distanceFilter: 0, // Get all location updates
+                interval: 1000, // Check every second
+                fastestInterval: 500, // Fastest update rate
+                forceRequestLocation: true,
+                showLocationDialog: true, // Android: Show system location dialog
+                forceLocationManager: true, // Android: Use LocationManager instead of FusedLocationProvider
+              },
+            );
+            
+            const startTime = Date.now();
+          });
+
+          // Keep the most accurate position
+          if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+            bestPosition = position;
+          }
+
+          // If we got very high accuracy (< 5m), break early
+          if (position.coords.accuracy <= 5) {
+            console.log(`Excellent accuracy achieved: ${position.coords.accuracy}m`);
+            break;
+          }
+
+          // Short delay between attempts
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+
+        } catch (attemptError) {
+          console.log(`Attempt ${attempts} failed:`, attemptError);
+          
+          // If this is the last attempt, try with fallback settings
+          if (attempts === maxAttempts) {
+            try {
+              bestPosition = await new Promise((resolve, reject) => {
+                Geolocation.getCurrentPosition(
+                  resolve,
+                  reject,
+                  {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 2000,
+                    distanceFilter: 1,
+                  },
+                );
+              });
+            } catch (fallbackError) {
+              console.log('Fallback also failed:', fallbackError);
+            }
+          }
+        }
+      }
+
+      if (!bestPosition) {
+        throw new Error('Tidak dapat memperoleh lokasi setelah beberapa percobaan');
+      }
+
+      const accuracy = bestPosition.coords.accuracy;
+      let accuracyLevel;
+      let isHighAccuracy;
+
+      if (accuracy <= 5) {
+        accuracyLevel = 'Sangat Akurat';
+        isHighAccuracy = true;
+      } else if (accuracy <= 50) {
+        accuracyLevel = 'Akurat';
+        isHighAccuracy = true;
+      } else if (accuracy <= 150) {
+        accuracyLevel = 'Cukup Akurat';
+        isHighAccuracy = false;
+      } else {
+        accuracyLevel = 'Kurang Akurat';
+        isHighAccuracy = false;
+      }
+
+      // Get enhanced location details
+      const locationDetails = await getLocationDetails(
+        bestPosition.coords.latitude,
+        bestPosition.coords.longitude,
+      );
+
       setLocation({
-        latitude: null,
-        longitude: null,
-        accuracy: null,
-        error: 'Izin lokasi ditolak',
+        latitude: bestPosition.coords.latitude,
+        longitude: bestPosition.coords.longitude,
+        accuracy: accuracy,
+        address: locationDetails?.shortAddress || null,
+        fullAddress: locationDetails?.fullAddress || null,
+        placeName: locationDetails?.placeName || null,
+        error: null,
+        isHighAccuracy,
+      });
+
+      const locationText = locationDetails?.placeName 
+        ? `${locationDetails.placeName} - ${locationDetails.shortAddress}`
+        : locationDetails?.shortAddress || 'Koordinat: ' + bestPosition.coords.latitude.toFixed(6) + ', ' + bestPosition.coords.longitude.toFixed(6);
+
+      showMessage({
+        message: `Lokasi Terdeteksi (${accuracyLevel})`,
+        description: `${locationText}\nPercobaan: ${attempts}, Akurasi: ±${accuracy.toFixed(1)}m`,
+        type: accuracy <= 15 ? 'success' : accuracy <= 150 ? 'warning' : 'info',
+        duration: 5000,
+      });
+
+    } catch (error) {
+      setLocation(prev => ({
+        ...prev,
+        error: error.message,
+      }));
+      showMessage({
+        message: 'Gagal',
+        description: 'Tidak dapat mengambil lokasi: ' + error.message,
+        type: 'danger',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLaunchCamera = async () => {
+    try {
+      const result = await launchCamera({
+        mediaType: 'photo',
+        includeBase64: true, // Changed to true to get base64
+        quality: 0.7,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        saveToPhotos: true,
+        cameraType: 'back',
+      });
+
+      if (result.didCancel) {
+        showMessage({
+          message: 'Peringatan',
+          description: 'Pengambilan foto dibatalkan',
+          type: 'warning',
+        });
+        return;
+      }
+
+      if (result.errorCode || !result.assets?.[0]?.uri) {
+        throw new Error(result.errorMessage || 'Gagal mengambil foto');
+      }
+
+      const asset = result.assets[0];
+      setPhoto({
+        uri: asset.uri,
+        base64: asset.base64, // Store base64 data
+      });
+      
+      // Get location after photo is successfully taken
+      await fetchDateTimeAndLocation();
+    } catch (error) {
+      showMessage({
+        message: 'Error',
+        description: error.message,
+        type: 'danger',
+      });
+    }
+  };
+
+  const openInMaps = () => {
+    if (!location.latitude || !location.longitude) return;
+    
+    const url = Platform.select({
+      ios: `maps://?q=${location.latitude},${location.longitude}`,
+      android: `geo:${location.latitude},${location.longitude}?q=${location.latitude},${location.longitude}`,
+    });
+
+    Linking.openURL(url!).catch(err =>
+      showMessage({
+        message: 'Error',
+        description: 'Tidak dapat membuka peta: ' + (err.message || 'Aplikasi peta tidak ditemukan'),
+        type: 'danger',
+      }),
+    );
+  };
+
+  const refreshLocation = async () => {
+    if (loading) return;
+    await fetchDateTimeAndLocation();
+  };
+
+  // Updated confirmation handler with Firebase Realtime Database and user information
+  const handleConfirmation = async () => {
+    if (isSubmitting) return; // Prevent multiple submissions
+
+    if (!photo || !photo.base64) {
+      showMessage({
+        message: 'Peringatan',
+        description: 'Harap ambil foto terlebih dahulu',
+        type: 'warning',
+      });
+      return;
+    }
+    
+    if (!location.latitude) {
+      showMessage({
+        message: 'Peringatan',
+        description: 'Harap tunggu hingga lokasi terdeteksi',
+        type: 'warning',
       });
       return;
     }
 
-    Geolocation.getCurrentPosition(
-      position => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          error: null,
-        });
-        showMessage({
-          message: 'Lokasi Diperbarui',
-          description: `Lokasi: ${position.coords.latitude.toFixed(
-            4,
-          )}, ${position.coords.longitude.toFixed(4)}`,
-          type: 'success',
-          icon: 'success',
-          duration: 2000,
-        });
-      },
-      error => {
-        console.error('Error getting location:', error.code, error.message);
-        setLocation({
-          latitude: null,
-          longitude: null,
-          accuracy: null,
-          error: error.message,
-        });
-        showMessage({
-          message: 'Kesalahan Lokasi',
-          description: `Gagal mendapatkan lokasi: ${error.message}`,
-          type: 'danger',
-          icon: 'danger',
-          duration: 4000,
-        });
-      },
-      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}, // Opsi untuk akurasi tinggi
-    );
-  };
-
-  /**
-   * Fungsi untuk meluncurkan kamera dan menangani hasil foto.
-   * Setelah foto diambil, foto akan dikonversi ke Base64 dan disimpan di state.
-   * Kemudian, akan memicu pengambilan tanggal, waktu, dan lokasi.
-   */
-  const handleLaunchCamera = async () => {
-    const options = {
-      mediaType: 'photo' as const,
-      includeBase64: true,
-      quality: 0.8,
-      maxWidth: 800,
-      maxHeight: 600,
-    };
+    setIsSubmitting(true);
 
     try {
-      const result = await launchCamera(options);
+      // Get current user information
+      const currentUser = getCurrentUser();
+      
+      // Get Firebase Realtime Database instance
+      const database = getDatabase(app);
+      
+      // Save under user's UID for better organization
+      const userAttendanceRef = ref(database, `attendance/${currentUser.uid}`);
 
-      if (result.didCancel) {
-        console.log('Pengguna membatalkan pengambilan foto');
-        showMessage({
-          message: 'Informasi',
-          description: 'Pengambilan foto dibatalkan.',
-          type: 'info',
-          icon: 'info',
-          duration: 3000,
-        });
-      } else if (result.errorCode) {
-        console.error(
-          'Kesalahan launchCamera:',
-          result.errorCode,
-          result.errorMessage,
-        );
-        showMessage({
-          message: 'Kesalahan',
-          description: `Gagal mengakses kamera: ${result.errorMessage}`,
-          type: 'danger',
-          icon: 'danger',
-          duration: 4000,
-        });
-      } else if (result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        if (asset.base64) {
-          setPhotoBase64(asset.base64);
-          console.log('Foto berhasil diambil dan dikonversi ke Base64.');
-          showMessage({
-            message: 'Berhasil!',
-            description: 'Foto berhasil diambil.',
-            type: 'success',
-            icon: 'success',
-            duration: 2000,
-          });
-          // Panggil fungsi untuk mendapatkan tanggal, waktu, dan lokasi setelah foto diambil
-          fetchDateTimeAndLocation();
-        } else {
-          showMessage({
-            message: 'Kesalahan',
-            description: 'Tidak dapat mengambil data Base64 dari foto.',
-            type: 'danger',
-            icon: 'danger',
-            duration: 4000,
-          });
+      // Create submission data with user information
+      const submissionData = {
+        // User information
+        user: {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName,
+          phoneNumber: currentUser.phoneNumber,
+        },
+        // Attendance data
+        photo: `data:image/jpeg;base64,${photo.base64}`, // Store as base64 with data URI prefix
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          accuracy: location.accuracy,
+          address: location.address,
+          fullAddress: location.fullAddress,
+          placeName: location.placeName,
+          isHighAccuracy: location.isHighAccuracy,
+        },
+        tanggal,
+        waktu,
+        timestamp: Date.now(), // Add timestamp for sorting
+        createdAt: new Date().toISOString(), // Human readable timestamp
+        // Additional metadata
+        deviceInfo: {
+          platform: Platform.OS,
+          version: Platform.Version,
         }
-      }
-    } catch (error) {
-      console.error('Terjadi kesalahan saat meluncurkan kamera:', error);
+      };
+
+      console.log('Submitting data to Firebase for user:', currentUser.email);
+
+      // Save to Firebase Realtime Database under user's UID
+      const newAttendanceRef = await push(userAttendanceRef, submissionData);
+      
+      console.log('Data successfully saved with ID:', newAttendanceRef.key);
+
+      // Show success message
       showMessage({
-        message: 'Kesalahan',
-        description: 'Terjadi kesalahan saat mencoba mengakses kamera.',
-        type: 'danger',
-        icon: 'danger',
-        duration: 4000,
+        message: 'Berhasil!',
+        description: `Absensi berhasil disimpan untuk ${currentUser.email || currentUser.displayName}`,
+        type: 'success',
+        duration: 3000,
       });
+
+      // Navigate back to home page
+      setTimeout(() => {
+        navigation.navigate('Home');
+      }, 1000);
+
+    } catch (error) {
+      console.error('Firebase submission error:', error);
+      
+      let errorMessage = 'Terjadi kesalahan saat menyimpan ke database';
+      
+      if (error.message === 'User not authenticated') {
+        errorMessage = 'User tidak terautentikasi. Silakan login kembali.';
+        // Optionally navigate to login screen
+        // navigation.navigate('Login');
+      } else {
+        errorMessage = `${errorMessage}: ${error.message}`;
+      }
+      
+      // Show error message with more details
+      showMessage({
+        message: 'Gagal!',
+        description: errorMessage,
+        type: 'danger',
+        duration: 5000,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        scrollEventThrottle={16}
+      >
         <Header text="Absensi" />
         <View style={styles.content}>
           <View style={styles.photoSection}>
-            <Text style={styles.sectionLabel}>Photo</Text>
-            <TouchableOpacity onPress={handleLaunchCamera}>
-              {photoBase64 ? (
+            <Text style={styles.sectionLabel}>Foto</Text>
+            <TouchableOpacity onPress={handleLaunchCamera} style={styles.photoContainer}>
+              {photo ? (
                 <Image
-                  source={{uri: `data:image/jpeg;base64,${photoBase64}`}}
+                  source={{uri: photo.uri}}
                   style={styles.photoPreview}
+                  resizeMode="cover"
                 />
               ) : (
                 <View style={styles.photoPlaceholder}>
                   <Text style={styles.placeholderText}>
-                    Ketuk untuk mengambil foto
+                    Ambil Foto
                   </Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
-          <View style={styles.bottomSection}>
-            <View style={styles.formColumn}>
+
+          <View style={styles.detailsContainer}>
+            <View style={styles.timeContainer}>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Tanggal</Text>
                 <RNTextInput
                   value={tanggal}
-                  onChangeText={setTanggal}
-                  placeholder="DD/MM/YYYY"
                   style={styles.dateTimeInput}
-                  editable={false} // Tidak bisa diedit manual
+                  editable={false}
                 />
               </View>
-
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Waktu</Text>
                 <RNTextInput
                   value={waktu}
-                  onChangeText={setWaktu}
-                  placeholder="HH.MM"
                   style={styles.dateTimeInput}
-                  editable={false} // Tidak bisa diedit manual
+                  editable={false}
                 />
               </View>
             </View>
-            <View style={styles.locationColumn}>
-              <Text style={styles.sectionLabel}>Location</Text>
-              <View style={styles.locationPlaceholder}>
-                {location.latitude !== null && location.longitude !== null ? (
-                  <Text style={styles.locationText}>
-                    Lat: {location.latitude.toFixed(4)}
-                    {'\n'}
-                    Lon: {location.longitude.toFixed(4)}
-                    {'\n'}
-                    Akurasi:{' '}
-                    {location.accuracy
-                      ? `${location.accuracy.toFixed(2)}m`
-                      : 'N/A'}
-                  </Text>
-                ) : location.error ? (
-                  <Text style={styles.locationErrorText}>{location.error}</Text>
-                ) : (
-                  <Text style={styles.placeholderText}>
-                    Lokasi belum diambil
-                  </Text>
-                )}
+
+            <View style={styles.locationContainer}>
+              <View style={styles.locationHeader}>
+                <Text style={styles.sectionLabel}>Lokasi</Text>
+                <TouchableOpacity 
+                  onPress={refreshLocation}
+                  style={styles.refreshButton}
+                  disabled={loading}
+                >
+                  <Text style={styles.refreshButtonText}>🔄</Text>
+                </TouchableOpacity>
               </View>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.locationBox,
+                  location.isHighAccuracy ? styles.highAccuracyBox : styles.lowAccuracyBox
+                ]}
+                onPress={openInMaps}
+                disabled={!location.latitude || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#0000ff" />
+                ) : location.fullAddress ? (
+                  <>
+                    {location.placeName && (
+                      <Text style={styles.placeNameText}>{location.placeName}</Text>
+                    )}
+                    <Text style={styles.locationText}>{location.address}</Text>
+                    <Text style={styles.fullAddressText}>{location.fullAddress}</Text>
+                    <Text style={styles.coordinatesText}>
+                      {location.latitude?.toFixed(6)}, {location.longitude?.toFixed(6)}
+                    </Text>
+                    <Text style={[
+                      styles.accuracyText,
+                      location.isHighAccuracy ? styles.highAccuracyText : styles.lowAccuracyText
+                    ]}>
+                      {location.isHighAccuracy ? '✓ Akurat' : '⚠ Kurang Akurat'} (±{location.accuracy?.toFixed(1)}m)
+                    </Text>
+                  </>
+                ) : location.error ? (
+                  <Text style={styles.errorText}>{location.error}</Text>
+                ) : (
+                  <Text style={styles.placeholderText}>Menunggu lokasi...</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
+
+          <View style={styles.buttonContainer}>
+            <Button 
+              text={isSubmitting ? "Menyimpan..." : "Konfirmasi"} 
+              onPress={handleConfirmation}
+              disabled={isSubmitting || loading}
+            />
+            {isSubmitting && (
+              <ActivityIndicator 
+                size="small" 
+                color="#0000ff" 
+                style={styles.submitLoader}
+              />
+            )}
+          </View>
         </View>
-        <Button text="Confirm" />
-        <View style={{marginBottom: 100}}></View>
       </ScrollView>
       <Buttonnavigation navigation={navigation} />
     </SafeAreaView>
   );
 };
 
-export default Scan;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    position: 'relative',
     backgroundColor: '#FFFFFF',
+  },
+  scrollContainer: {
+    flex: 1,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    marginBottom: 15,
+    padding: 20,
+    paddingBottom: 100,
+  },
+  buttonContainer: {
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  submitLoader: {
+    marginTop: 10,
   },
   photoSection: {
-    marginBottom: 30,
+    marginBottom: 20,
     alignItems: 'center',
   },
-  sectionLabel: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 14,
-    color: '#000000',
-    marginBottom: 10,
-    alignSelf: 'center',
+  photoContainer: {
+    width: '100%',
+    height: 300,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   photoPlaceholder: {
-    width: 350,
-    height: 280,
-    borderRadius: 20,
-    backgroundColor: '#CCCCCC',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  placeholderText: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 16,
-    color: '#666666',
-    textAlign: 'center',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
   },
   photoPreview: {
-    width: 350,
-    height: 280,
-    borderRadius: 20,
-    resizeMode: 'cover',
+    width: '100%',
+    height: '100%',
   },
-  bottomSection: {
+  detailsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginTop: 20,
   },
-  formColumn: {
+  timeContainer: {
     flex: 1,
+    marginRight: 10,
   },
-  locationColumn: {
+  locationContainer: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  refreshButton: {
+    padding: 5,
+  },
+  refreshButtonText: {
+    fontSize: 16,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   inputLabel: {
-    fontFamily: 'Poppins-Medium',
     fontSize: 14,
-    color: '#000000',
-    marginBottom: 8,
+    fontWeight: '500',
+    marginBottom: 5,
   },
   dateTimeInput: {
-    width: 180,
-    height: 50,
-    borderWidth: 2,
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    paddingVertical: 20,
-    borderColor: '#CFCFCF',
-    backgroundColor: '#FFFFFF',
-    fontSize: 13,
-    fontFamily: 'Poppins-Medium',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 4.3,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    backgroundColor: '#f9f9f9',
   },
-  locationPlaceholder: {
-    width: 170,
-    height: 170,
-    borderRadius: 15,
-    backgroundColor: '#CCCCCC',
+  locationBox: {
+    minHeight: 140,
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 10,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 10, // Tambahkan padding agar teks tidak terlalu mepet
+    backgroundColor: '#f9f9f9',
+  },
+  highAccuracyBox: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#f8fff8',
+  },
+  lowAccuracyBox: {
+    borderColor: '#FF9800',
+    backgroundColor: '#fffbf0',
+  },
+  placeNameText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 6,
   },
   locationText: {
-    fontFamily: 'Poppins-Regular',
     fontSize: 14,
-    color: '#333333',
-    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
   },
-  locationErrorText: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 14,
+  fullAddressText: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 4,
+  },
+  coordinatesText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  accuracyText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginTop: 6,
+  },
+  highAccuracyText: {
+    color: '#4CAF50',
+  },
+  lowAccuracyText: {
+    color: '#FF9800',
+  },
+  errorText: {
     color: 'red',
+    fontSize: 14,
+  },
+  placeholderText: {
+    color: '#999',
     textAlign: 'center',
+    fontSize: 16,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
+
+export default Scan;
