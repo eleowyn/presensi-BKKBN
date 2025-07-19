@@ -39,30 +39,30 @@ const Home = ({navigation}) => {
               const userData = snapshot.val();
 
               if (userData) {
-                // Set nama user dari data Firebase
+                // Set user's name from Firebase data
                 if (userData.fullName) {
                   const nameParts = userData.fullName.split(' ');
-                  setFirstName(nameParts[0]); // Ambil nama depan saja
+                  setFirstName(nameParts[0]); // Take only the first name
                 }
 
-                // Set data statistik jika ada
+                // Set statistics data if available
                 if (userData.statistics) {
                   const stats = userData.statistics;
 
-                  // Data mingguan
+                  // Weekly data
                   if (stats.weekly) {
-                    setAttendanceWeekly(stats.weekly.attendance || 1);
-                    setLateWeekly(stats.weekly.late || 1);
-                    setExcusedWeekly(stats.weekly.excused || 1);
-                    setUnexcusedWeekly(stats.weekly.unexcused || 1);
+                    setAttendanceWeekly(stats.weekly.attendance || 0);
+                    setLateWeekly(stats.weekly.late || 0);
+                    setExcusedWeekly(stats.weekly.excused || 0);
+                    setUnexcusedWeekly(stats.weekly.unexcused || 0);
                   }
 
-                  // Data keseluruhan
+                  // Overall data
                   if (stats.overall) {
-                    setAttendanceOverall(stats.overall.attendance || 1);
-                    setLateOverall(stats.overall.late || 1);
-                    setExcusedOverall(stats.overall.excused || 1);
-                    setUnexcusedOverall(stats.overall.unexcused || 1);
+                    setAttendanceOverall(stats.overall.attendance || 0);
+                    setLateOverall(stats.overall.late || 0);
+                    setExcusedOverall(stats.overall.excused || 0);
+                    setUnexcusedOverall(stats.overall.unexcused || 0);
                   }
                 }
               }
@@ -71,7 +71,7 @@ const Home = ({navigation}) => {
               console.error('Error reading user data:', error);
               showMessage({
                 message: 'Error',
-                description: 'Gagal memuat data pengguna',
+                description: 'Failed to load user data',
                 type: 'danger',
                 duration: 3000,
               });
@@ -82,7 +82,7 @@ const Home = ({navigation}) => {
         console.error('Error fetching user data:', error);
         showMessage({
           message: 'Error',
-          description: 'Terjadi kesalahan saat memuat data',
+          description: 'An error occurred while loading data',
           type: 'danger',
           duration: 3000,
         });
@@ -97,7 +97,7 @@ const Home = ({navigation}) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>Memuat data...</Text>
+        <Text style={styles.loading}>Loading</Text>
       </SafeAreaView>
     );
   }
@@ -105,7 +105,7 @@ const Home = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Header text={`Hai, ${firstname}`} />
+        <Header text={`Hello, ${firstname}`} />
         <TextTitle text={'Here’s your weekly statistics'} />
         <WeeklyChart
           Attendance={attendanceWeekly}
@@ -136,5 +136,8 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: 'white',
     justifyContent: 'center',
+  },
+  loading: {
+    alignSelf: 'center',
   },
 });

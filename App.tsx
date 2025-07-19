@@ -4,7 +4,7 @@ import {
   Account,
   Activity,
   Home,
-  Login,
+  SignIn,
   SignUp,
   SplashScreen,
   DashboardAdmin,
@@ -26,7 +26,7 @@ const App = () => {
       <Stack.Navigator>
         <Stack.Screen
           name="Login"
-          component={Login}
+          component={SignIn}
           options={{headerShown: false}}
         />
         <Stack.Screen
