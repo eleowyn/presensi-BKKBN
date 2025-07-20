@@ -83,7 +83,7 @@ const Card = () => {
       setLoading(false);
       showMessage({
         message: 'Error',
-        description: 'User tidak terautentikasi. Silakan login kembali.',
+        description: 'User is not authenticated. Please login',
         type: 'danger',
       });
       return null;
@@ -129,7 +129,7 @@ const Card = () => {
           console.error('Firebase fetch error:', error);
           showMessage({
             message: 'Error',
-            description: 'Gagal mengambil data absensi: ' + error.message,
+            description: 'Failed to get data' + error.message,
             type: 'danger',
           });
           setLoading(false);
@@ -244,7 +244,7 @@ const Card = () => {
       console.error('Error showing card details:', error);
       showMessage({
         message: 'Error',
-        description: 'Gagal menampilkan detail absensi',
+        description: 'Failed to load data',
         type: 'danger',
       });
     }
@@ -256,7 +256,7 @@ const Card = () => {
       const status = item.status || 'Unknown';
       const displayLocation = item.location?.placeName
         ? `${item.location.placeName}`
-        : item.location?.address || 'Lokasi tidak diketahui';
+        : item.location?.address || 'Location Unknown';
 
       return (
         <TouchableOpacity onPress={() => handleCardPress(item)}>

@@ -113,8 +113,6 @@ const Home = ({navigation}) => {
               unexcused: 0,
               total: 0,
             };
-
-            // Gantikan seluruh blok "Object.values(attendanceData).forEach(...)" dengan ini
             if (attendanceData) {
               Object.values(attendanceData).forEach((record: any) => {
                 const recordTimestamp = record.tanggal;
@@ -143,10 +141,6 @@ const Home = ({navigation}) => {
                   return;
                 }
 
-                // ==========================================================
-                // ## BAGIAN DEBUGGING ##
-                // Cetak semua variabel penting untuk setiap record
-                // ==========================================================
                 console.log('======================================');
                 console.log('Mengecek Record:', recordTimestamp);
                 console.log(
@@ -166,7 +160,6 @@ const Home = ({navigation}) => {
                   isDateInCurrentWeek(recordDate, startOfWeek, endOfWeek),
                 );
                 console.log('======================================');
-                // ==========================================================
 
                 const status = record.status?.toLowerCase();
 

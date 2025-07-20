@@ -159,7 +159,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         const shortAddress =
           addressParts.length > 0
             ? addressParts.join(', ')
-            : 'Lokasi tidak dikenal';
+            : 'Location Unknown';
 
         // Full detailed address
         const fullAddress =
@@ -173,7 +173,7 @@ const Scan = ({navigation}: {navigation: any}) => {
             country,
           ]
             .filter(Boolean)
-            .join(', ') || 'Lokasi tidak dikenal';
+            .join(', ') || 'Location Unknown';
 
         bestResult = {
           shortAddress,
@@ -194,8 +194,8 @@ const Scan = ({navigation}: {navigation: any}) => {
         bestResult = {
           shortAddress:
             data.display_name?.split(',').slice(0, 3).join(', ') ||
-            'Lokasi tidak dikenal',
-          fullAddress: data.display_name || 'Lokasi tidak dikenal',
+            'Location Unknown',
+          fullAddress: data.display_name || 'Location Unknown',
           placeName: data.namedetails?.name || null,
           source: 'LocationIQ',
         };
@@ -216,11 +216,11 @@ const Scan = ({navigation}: {navigation: any}) => {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
-          title: 'Izin Lokasi',
-          message: 'Aplikasi ini memerlukan akses lokasi Anda untuk absensi.',
-          buttonNeutral: 'Nanti',
-          buttonNegative: 'Tolak',
-          buttonPositive: 'Izinkan',
+          title: 'Location Premission',
+          message: 'This App need location premission for scan',
+          buttonNeutral: 'Later',
+          buttonNegative: 'Deny',
+          buttonPositive: 'Allow',
         },
       );
       return granted === PermissionsAndroid.RESULTS.GRANTED;
@@ -242,7 +242,7 @@ const Scan = ({navigation}: {navigation: any}) => {
     try {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
-        throw new Error('Izin lokasi ditolak');
+        throw new Error('Location Premission Denied');
       }
 
       // Multiple location attempts for maximum accuracy
@@ -333,9 +333,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       }
 
       if (!bestPosition) {
-        throw new Error(
-          'Tidak dapat memperoleh lokasi setelah beberapa percobaan',
-        );
+        throw new Error(`Can't get location after multiple attempt`);
       }
 
       const accuracy = bestPosition.coords.accuracy;
@@ -395,8 +393,8 @@ const Scan = ({navigation}: {navigation: any}) => {
         error: error.message,
       }));
       showMessage({
-        message: 'Gagal',
-        description: 'Tidak dapat mengambil lokasi: ' + error.message,
+        message: 'Fail',
+        description: 'Failed to get location: ' + error.message,
         type: 'danger',
       });
     } finally {
@@ -418,15 +416,15 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       if (result.didCancel) {
         showMessage({
-          message: 'Peringatan',
-          description: 'Pengambilan foto dibatalkan',
+          message: 'Warning',
+          description: 'Taking Photo Canceled',
           type: 'warning',
         });
         return;
       }
 
       if (result.errorCode || !result.assets?.[0]?.uri) {
-        throw new Error(result.errorMessage || 'Gagal mengambil foto');
+        throw new Error(result.errorMessage || 'Failed to take photo');
       }
 
       const asset = result.assets[0];
@@ -458,8 +456,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       showMessage({
         message: 'Error',
         description:
-          'Tidak dapat membuka peta: ' +
-          (err.message || 'Aplikasi peta tidak ditemukan'),
+          'Failed to open Maps: ' + (err.message || 'Map App is not found'),
         type: 'danger',
       }),
     );
@@ -476,8 +473,8 @@ const Scan = ({navigation}: {navigation: any}) => {
 
     if (!photo || !photo.base64) {
       showMessage({
-        message: 'Peringatan',
-        description: 'Harap ambil foto terlebih dahulu',
+        message: 'Warning',
+        description: 'Please take a picture first',
         type: 'warning',
       });
       return;
@@ -485,8 +482,8 @@ const Scan = ({navigation}: {navigation: any}) => {
 
     if (!location.latitude) {
       showMessage({
-        message: 'Peringatan',
-        description: 'Harap tunggu hingga lokasi terdeteksi',
+        message: 'Warning',
+        description: 'Wait for location to be detected',
         type: 'warning',
       });
       return;
@@ -549,8 +546,8 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       // Show success message with status information
       showMessage({
-        message: 'Berhasil!',
-        description: `Absensi berhasil disimpan untuk ${
+        message: 'Success!',
+        description: `Data is saved for ${
           currentUser.email || currentUser.displayName
         }\nStatus: ${attendanceStatus}`,
         type: 'success',
@@ -564,10 +561,10 @@ const Scan = ({navigation}: {navigation: any}) => {
     } catch (error) {
       console.error('Firebase submission error:', error);
 
-      let errorMessage = 'Terjadi kesalahan saat menyimpan ke database';
+      let errorMessage = 'Something went wrong';
 
       if (error.message === 'User not authenticated') {
-        errorMessage = 'User tidak terautentikasi. Silakan login kembali.';
+        errorMessage = 'User is not authenticated. Please sign in first.';
         // Optionally navigate to login screen
         // navigation.navigate('Login');
       } else {
@@ -576,7 +573,7 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       // Show error message with more details
       showMessage({
-        message: 'Gagal!',
+        message: 'Fail!',
         description: errorMessage,
         type: 'danger',
         duration: 5000,
@@ -641,7 +638,7 @@ const Scan = ({navigation}: {navigation: any}) => {
                   onPress={refreshLocation}
                   style={styles.refreshButton}
                   disabled={loading}>
-                  <Text style={styles.refreshButtonText}>🔄</Text>
+                  <Text style={styles.refreshButtonText}>↻</Text>
                 </TouchableOpacity>
               </View>
 

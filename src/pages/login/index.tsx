@@ -18,7 +18,7 @@ import {
   getAuth,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
-} from 'firebase/auth'; // Perbaikan di sini
+} from 'firebase/auth';
 import {showMessage} from 'react-native-flash-message';
 import {isAdminEmail} from '../../utils/adminUtils';
 
@@ -32,8 +32,8 @@ const SignIn = ({navigation}: {navigation: any}) => {
   const handleLogin = async () => {
     if (!email || !password) {
       showMessage({
-        message: 'Form Tidak Lengkap',
-        description: 'Email dan password harus diisi',
+        message: 'Incomplete Form',
+        description: 'Email and password are required',
         type: 'warning',
         duration: 3000,
       });
@@ -47,7 +47,7 @@ const SignIn = ({navigation}: {navigation: any}) => {
       await signInWithEmailAndPassword(auth, email, password);
 
       showMessage({
-        message: 'Login Berhasil',
+        message: 'Login Successful',
         type: 'success',
         duration: 3000,
       });
@@ -58,30 +58,30 @@ const SignIn = ({navigation}: {navigation: any}) => {
         navigation.replace('Home');
       }
     } catch (error: any) {
-      let errorMessage = 'Login gagal. Silakan coba lagi.';
+      let errorMessage = 'Login failed. Please try again.';
 
       switch (error.code) {
         case 'auth/invalid-email':
-          errorMessage = 'Format email tidak valid';
+          errorMessage = 'Invalid email format';
           break;
         case 'auth/user-disabled':
-          errorMessage = 'Akun ini dinonaktifkan';
+          errorMessage = 'Account is disabled';
           break;
         case 'auth/user-not-found':
-          errorMessage = 'Akun tidak ditemukan';
+          errorMessage = 'Account not found';
           break;
         case 'auth/wrong-password':
-          errorMessage = 'Password salah';
+          errorMessage = 'Incorrect password';
           break;
         case 'auth/too-many-requests':
-          errorMessage = 'Terlalu banyak percobaan gagal. Coba lagi nanti';
+          errorMessage = 'Too many failed attempts. Try again later';
           break;
         default:
-          errorMessage = 'Terjadi kesalahan. Silakan coba lagi';
+          errorMessage = 'An error occurred. Please try again';
       }
 
       showMessage({
-        message: 'Error Login',
+        message: 'Login Error',
         description: errorMessage,
         type: 'danger',
         duration: 4000,
@@ -94,8 +94,8 @@ const SignIn = ({navigation}: {navigation: any}) => {
   const handleResetPassword = async () => {
     if (!email) {
       showMessage({
-        message: 'Email diperlukan',
-        description: 'Silakan masukkan email Anda untuk reset password',
+        message: 'Email Required',
+        description: 'Please enter your email to reset password',
         type: 'warning',
         duration: 3000,
       });
@@ -110,27 +110,27 @@ const SignIn = ({navigation}: {navigation: any}) => {
 
       setResetEmailSent(true);
       showMessage({
-        message: 'Email reset password terkirim',
-        description: 'Silakan cek email Anda untuk instruksi reset password',
+        message: 'Password Reset Email Sent',
+        description: 'Please check your email for password reset instructions',
         type: 'success',
         duration: 5000,
       });
     } catch (error: any) {
-      let errorMessage = 'Gagal mengirim email reset. Silakan coba lagi.';
+      let errorMessage = 'Failed to send reset email. Please try again.';
 
       switch (error.code) {
         case 'auth/invalid-email':
-          errorMessage = 'Format email tidak valid';
+          errorMessage = 'Invalid email format';
           break;
         case 'auth/user-not-found':
-          errorMessage = 'Akun tidak ditemukan';
+          errorMessage = 'Account not found';
           break;
         default:
-          errorMessage = 'Terjadi kesalahan. Silakan coba lagi';
+          errorMessage = 'An error occurred. Please try again';
       }
 
       showMessage({
-        message: 'Error Reset Password',
+        message: 'Password Reset Error',
         description: errorMessage,
         type: 'danger',
         duration: 4000,
@@ -186,7 +186,7 @@ const SignIn = ({navigation}: {navigation: any}) => {
 
           {resetEmailSent && (
             <Text style={styles.resetSuccess}>
-              Email reset password telah dikirim ke {email}
+              Password reset email has been sent to {email}
             </Text>
           )}
 
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   disabledText: {
-    color: '#CCCCCC', // Warna lebih terang saat disabled
+    color: '#CCCCCC',
   },
   resetSuccess: {
     color: 'green',
