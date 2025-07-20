@@ -8,10 +8,11 @@ import {
   RefreshControl,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import React, {useState, useEffect} from 'react';
 import {getDatabase, ref, onValue, off} from 'firebase/database';
-import {getAuth} from 'firebase/auth';
+import {getAuth, signOut} from 'firebase/auth';
 import {showMessage} from 'react-native-flash-message';
 import AdminCard from '../../components/molecules/adminCard';
 
@@ -148,6 +149,42 @@ const Dashboard = ({navigation}: {navigation: any}) => {
     setSearchQuery('');
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              showMessage({
+                message: 'Logged out successfully',
+                type: 'success',
+                duration: 2000,
+              });
+              // Navigation will be handled automatically by auth state change
+            } catch (error) {
+              console.error('Logout error:', error);
+              showMessage({
+                message: 'Logout failed',
+                description: 'Please try again',
+                type: 'danger',
+                duration: 3000,
+              });
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const renderUserCard = ({item}: {item: UserWithId}) => (
     <AdminCard
       userId={item.id}
@@ -184,8 +221,15 @@ const Dashboard = ({navigation}: {navigation: any}) => {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <Text style={styles.title}>Admin Dashboard</Text>
-      <Text style={styles.subtitle}>Manage user attendance and data</Text>
+      <View style={styles.headerTop}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>Admin Dashboard</Text>
+          <Text style={styles.subtitle}>Manage user attendance and data</Text>
+        </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
       
       {currentUser?.email && (
         <Text style={styles.info}>
@@ -328,6 +372,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
   title: {
     fontSize: 28,
     fontFamily: 'Poppins-Bold',
@@ -338,7 +388,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
     color: '#666',
-    marginBottom: 10,
+  },
+  logoutButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  logoutButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
   },
   info: {
     fontSize: 14,
