@@ -165,13 +165,6 @@ const SignIn = ({navigation}: {navigation: any}) => {
 
           <View style={styles.rememberContainer}>
             <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => setRememberMe(!rememberMe)}>
-              <Checkbox fill={rememberMe ? '#000' : 'none'} />
-              <Text style={styles.terms}>Remember Me</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               onPress={handleResetPassword}
               disabled={isLoading}>
               <Text

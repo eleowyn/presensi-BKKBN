@@ -40,7 +40,7 @@ const SignUp = ({navigation}) => {
   const [NIP, setNIP] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
-  const [isAgreed, setIsAgreed] = useState(false);
+  const [isAgreed, setIsAgreed] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
 
@@ -199,12 +199,6 @@ const SignUp = ({navigation}) => {
             value={password}
             onChangeText={setPassword}
           />
-          <View style={styles.termsContainer}>
-            <TouchableOpacity onPress={() => setIsAgreed(!isAgreed)}>
-              <Checkbox fill={isAgreed ? '#000' : 'none'} />
-            </TouchableOpacity>
-            <Text style={styles.terms}>I agree with terms</Text>
-          </View>
           <Button
             text={isLoading ? 'Processing...' : 'Sign Up'}
             onPress={handleSignUp}
