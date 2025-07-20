@@ -31,6 +31,7 @@ interface AttendanceItem {
   timestamp?: number;
   photo?: string;
   status?: string; // Added status field
+  keterangan?: string; // Added keterangan field
 }
 
 const Card = () => {
@@ -306,6 +307,18 @@ const Card = () => {
                     {item.location?.accuracy?.toFixed(1) || 0}m)
                   </Text>
                 </View>
+
+                {item.keterangan && (
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Note:</Text>
+                    <Text
+                      style={styles.value}
+                      numberOfLines={2}
+                      ellipsizeMode="tail">
+                      {item.keterangan}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <View style={styles.imageContainer}>
