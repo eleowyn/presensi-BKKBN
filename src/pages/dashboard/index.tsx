@@ -8,178 +8,212 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
-import {ButtonNavAdmin, Header, Admincard} from '../../components';
+import {ButtonNavAdmin, Header} from '../../components';
 import {getDatabase, ref, onValue} from 'firebase/database';
+import {getAuth, signOut} from 'firebase/auth';
+import {showMessage} from 'react-native-flash-message';
 
-const DashboardAdmin = ({navigation}) => {
+interface UserData {
+  id: string;
+  fullName?: string;
+  email?: string;
+  department?: string;
+  NIP?: string;
+  startDate?: string;
+  profilePictureBase64?: string;
+  role?: string;
+}
+
+const DashboardAdmin = ({navigation}: {navigation: any}) => {
   console.log('DASHBOARD NAVIGATION:', navigation);
 
   const [selectedDepartment, setSelectedDepartment] = useState('Select Department');
   const [searchName, setSearchName] = useState('');
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [usersData, setUsersData] = useState({});
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const auth = getAuth();
 
   const departments = [
     'All Departments',
-    'IT Department',
-    'HR Department', 
-    'Finance Department',
-    'Marketing Department',
+    'PERENCANAAN DAN MANAJEMEN KINERJA',
+    'KEUANGAN DAN ANGGARAN',
+    'HUKUM, KEPEGAWAIAN DAN PELAYANAN PUBLIK',
+    'PENGEMBANGAN SDM',
+    'UMUM DAN PENGELOLAAN ΒΜΝ',
+    'ADVOKASI, KIE, KEHUMASAN, HUBUNGAN ANTAR LEMBAGA DAN INFORMASI PUBLIK',
+    'PELAPORAN, STATISTIK, DAN PENGELOLAAN TIK',
+    'KELUARGA BERENCANA DAN KESEHATAN REPRODUKSI',
+    'PENGENDALIAN PENDUDUK',
+    'PENGELOLAAN DAN PEMBINAAN LINI LAPANGAN',
+    'KEBIJAKAN STRATEGI, PPS, GENTING, DAN MBG',
+    'KETAHANAN KELUARGA BALITA, ANAK, DAN REMAJA',
+    'KETAHANAN KELUARGA LANSIA DAN PEMBERDAYAAN EKONOMI KELUARGA',
+    'ZI WBK/WBBM DAN SPIP',
   ];
 
-  // Get today's date in Indonesian format
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
-  };
 
-  // Fetch attendance records and user data from Firebase
+  // Fetch users data from Firebase
   useEffect(() => {
     const db = getDatabase();
-    const attendanceRef = ref(db, 'attendance');
     const usersRef = ref(db, 'users');
     
-    // First, fetch users data for reference
     const usersUnsubscribe = onValue(usersRef, (snapshot) => {
       try {
         if (snapshot.exists()) {
           const userData = snapshot.val();
-          setUsersData(userData);
-          console.log('Fetched users data:', Object.keys(userData).length, 'users');
-        }
-      } catch (error) {
-        console.error('Error fetching users data:', error);
-      }
-    });
-
-    // Then fetch attendance records
-    const attendanceUnsubscribe = onValue(attendanceRef, (snapshot) => {
-      try {
-        if (snapshot.exists()) {
-          const attendanceData = snapshot.val();
-          const allAttendanceRecords = [];
-          
-          // Process attendance data for each user
-          Object.keys(attendanceData).forEach(userId => {
-            const userAttendance = attendanceData[userId];
-            let attendanceArray = [];
-            
-            // Handle both array and object formats
-            if (Array.isArray(userAttendance)) {
-              attendanceArray = userAttendance.filter(item => item && item.timestamp);
-            } else if (typeof userAttendance === 'object') {
-              attendanceArray = Object.values(userAttendance).filter(item => item && item.timestamp);
-            }
-            
-            // Add userId to each attendance record
-            attendanceArray.forEach(record => {
-              allAttendanceRecords.push({
-                ...record,
-                userId: userId
-              });
+          const usersList = Object.keys(userData)
+            .map(userId => ({
+              id: userId,
+              ...userData[userId]
+            }))
+            // Filter out admin users if needed
+            .filter(user => user.role !== 'admin')
+            // Sort alphabetically by name
+            .sort((a, b) => {
+              const nameA = (a.fullName || '').toLowerCase();
+              const nameB = (b.fullName || '').toLowerCase();
+              return nameA.localeCompare(nameB);
             });
-          });
-          
-          // Sort by timestamp (newest first)
-          allAttendanceRecords.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-          
-          console.log('Fetched attendance records:', allAttendanceRecords.length);
-          setAttendanceRecords(allAttendanceRecords);
+
+          console.log('Fetched users data:', usersList.length, 'users');
+          setUsers(usersList);
+          setFilteredUsers(usersList);
         } else {
-          setAttendanceRecords([]);
+          setUsers([]);
+          setFilteredUsers([]);
         }
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching attendance data:', error);
+        console.error('Error fetching users data:', error);
         setLoading(false);
       }
     });
 
     return () => {
       usersUnsubscribe();
-      attendanceUnsubscribe();
     };
   }, []);
 
-  // Filter attendance records based on search and department
-  const getFilteredAttendanceRecords = () => {
-    let filtered = attendanceRecords;
+  // Filter users based on search and department
+  useEffect(() => {
+    let filtered = users;
 
     // Filter by name search
     if (searchName.trim()) {
-      filtered = filtered.filter(record => {
-        const userData = usersData[record.userId];
-        const userName = userData?.fullName || '';
+      filtered = filtered.filter(user => {
+        const userName = user.fullName || '';
         return userName.toLowerCase().includes(searchName.toLowerCase());
       });
     }
 
     // Filter by department
     if (selectedDepartment !== 'Select Department' && selectedDepartment !== 'All Departments') {
-      filtered = filtered.filter(record => {
-        const userData = usersData[record.userId];
-        const userDepartment = userData?.department || '';
+      filtered = filtered.filter(user => {
+        const userDepartment = user.department || '';
         return userDepartment === selectedDepartment;
       });
     }
 
-    return filtered;
+    // Sort alphabetically by name
+    filtered.sort((a, b) => {
+      const nameA = (a.fullName || '').toLowerCase();
+      const nameB = (b.fullName || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+    setFilteredUsers(filtered);
+  }, [users, searchName, selectedDepartment]);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout from Admin',
+      'Are you sure you want to logout from admin account?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              showMessage({
+                message: 'Admin logged out successfully',
+                type: 'success',
+                duration: 2000,
+              });
+              // Navigate back to login screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (error) {
+              console.error('Logout error:', error);
+              showMessage({
+                message: 'Logout failed',
+                description: 'Please try again',
+                type: 'danger',
+                duration: 3000,
+              });
+            }
+          },
+        },
+      ],
+    );
   };
 
-  const renderAttendanceCards = () => {
+  const renderUserCards = () => {
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
-          <Text>Loading attendance records...</Text>
+          <Text>Loading users...</Text>
         </View>
       );
     }
 
-    const filteredRecords = getFilteredAttendanceRecords();
-
-    if (filteredRecords.length === 0) {
+    if (filteredUsers.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Text>No attendance records found</Text>
+          <Text>No users found</Text>
         </View>
       );
     }
 
-    // Group by date for better organization (optional)
-    const groupedRecords = {};
-    filteredRecords.forEach(record => {
-      const date = record.tanggal || 'Unknown Date';
-      if (!groupedRecords[date]) {
-        groupedRecords[date] = [];
+    // Group users by first letter of their name
+    const groupedUsers: Record<string, UserData[]> = {};
+    filteredUsers.forEach(user => {
+      const firstLetter = (user.fullName || 'Unknown').charAt(0).toUpperCase();
+      if (!groupedUsers[firstLetter]) {
+        groupedUsers[firstLetter] = [];
       }
-      groupedRecords[date].push(record);
+      groupedUsers[firstLetter].push(user);
     });
 
-    return Object.keys(groupedRecords).map(date => (
-      <View key={date} style={styles.dateGroup}>
-        <Text style={styles.dateHeader}>{date}</Text>
-        {groupedRecords[date].map((record, index) => (
-          <AttendanceCard
-            key={`${record.userId}-${record.timestamp}-${index}`}
-            attendanceRecord={record}
-            userData={usersData[record.userId]}
+    // Sort the letters
+    const sortedLetters = Object.keys(groupedUsers).sort();
+
+    return sortedLetters.map(letter => (
+      <View key={letter} style={styles.letterGroup}>
+        <Text style={styles.letterHeader}>{letter}</Text>
+        {groupedUsers[letter].map((user) => (
+          <UserCard
+            key={user.id}
+            user={user}
             onPress={() => {
-              console.log('Attendance card pressed:', record);
-              // Navigate to attendance detail or user detail
-              navigation.navigate('UserDetail', {
-                userId: record.userId,
-                name: usersData[record.userId]?.fullName || 'Unknown User',
-                nip: usersData[record.userId]?.NIP || 'Not specified',
-                department: usersData[record.userId]?.department || 'Not specified',
-                email: usersData[record.userId]?.email || 'No email',
-                attendanceData: record,
+              console.log('User card pressed:', user);
+              navigation.navigate('UserProfile', {
+                userId: user.id,
+                name: user.fullName || 'Unknown User',
+                nip: user.NIP || 'Not specified',
+                department: user.department || 'Not specified',
+                email: user.email || 'No email',
               });
             }}
           />
@@ -194,7 +228,12 @@ const DashboardAdmin = ({navigation}) => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}>
-          <Header text="Admin" />
+          <View style={styles.headerWithLogout}>
+            <Header text="Admin" />
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Text style={styles.logoutButtonText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.filterContainer}>
             <View style={styles.filterRow}>
               <TouchableOpacity
@@ -231,7 +270,7 @@ const DashboardAdmin = ({navigation}) => {
           </View>
 
           <View>
-            {renderAttendanceCards()}
+            {renderUserCards()}
           </View>
         </ScrollView>
         <ButtonNavAdmin navigation={navigation} />
@@ -240,150 +279,65 @@ const DashboardAdmin = ({navigation}) => {
   );
 };
 
-// Updated AttendanceCard component for displaying attendance records with attendance photos
-const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
-  // Updated getAttendanceStatus to prioritize Firebase status field
-  const getAttendanceStatus = (record) => {
-    // First, check if there's a status field in the record (from Firebase)
-    if (record.status) {
-      return record.status;
-    }
-    
-    // Fallback to time-based calculation if no status field exists
-    const waktu = record.waktu;
-    if (!waktu) return 'Unexcused';
-    
-    const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
-    const timeInMinutes = hours * 60 + minutes;
-    const onTimeThreshold = 8 * 60; // 8:00 AM
-    const lateThreshold = 8 * 60 + 30; // 8:30 AM
-    
-    if (timeInMinutes <= onTimeThreshold) {
-      return 'Present';
-    } else if (timeInMinutes <= lateThreshold) {
-      return 'Late';
-    } else {
-      return 'Late';
-    }
-  };
-
-  // Updated getStatusStyle to handle all status types
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'Present':
-        return {
-          badge: {backgroundColor: '#B4FFB1'},
-          text: {color: '#2B6000'},
-        };
-      case 'Late':
-        return {
-          badge: {backgroundColor: '#FFF3B1'},
-          text: {color: '#8A6E00'},
-        };
-      case 'Excused':
-        return {
-          badge: {backgroundColor: '#B1D6FF'},
-          text: {color: '#004E8A'},
-        };
-      case 'Unexcused':
-        return {
-          badge: {backgroundColor: '#FFB1B1'},
-          text: {color: '#8A0000'},
-        };
-      default:
-        return {
-          badge: {backgroundColor: '#CCCCCC'},
-          text: {color: '#333333'},
-        };
-    }
-  };
-
-  // Use the updated function that checks Firebase status first
-  const status = getAttendanceStatus(attendanceRecord);
-  const statusStyle = getStatusStyle(status);
-
+// UserCard component for displaying user information
+const UserCard = ({user, onPress}: {user: UserData; onPress: () => void}) => {
   return (
-    <TouchableOpacity style={styles.attendanceCard} onPress={onPress}>
-      <View style={[styles.statusBadge, statusStyle.badge]}>
-        <Text style={[styles.statusText, statusStyle.text]}>
-          {status}
-        </Text>
-      </View>
-
+    <TouchableOpacity style={styles.userCard} onPress={onPress}>
       <View style={styles.detailsContainer}>
         <View style={styles.textSection}>
           <View style={styles.row}>
             <Text style={styles.label}>Name:</Text>
             <Text style={styles.value} numberOfLines={1} ellipsizeMode="tail">
-              {userData?.fullName || 'Unknown User'}
+              {user.fullName || 'Unknown User'}
             </Text>
           </View>
 
           <View style={styles.row}>
             <Text style={styles.label}>NIP:</Text>
             <Text style={styles.value}>
-              {userData?.NIP || 'Not specified'}
+              {user.NIP || 'Not specified'}
             </Text>
           </View>
 
           <View style={styles.row}>
             <Text style={styles.label}>Department:</Text>
-            <Text style={styles.value} numberOfLines={1} ellipsizeMode="tail">
-              {userData?.department || 'Not specified'}
+            <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
+              {user.department || 'Not specified'}
             </Text>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Time:</Text>
-            <Text style={styles.value}>
-              {attendanceRecord.waktu || 'Not recorded'}
+            <Text style={styles.label}>Email:</Text>
+            <Text style={styles.value} numberOfLines={1} ellipsizeMode="tail">
+              {user.email || 'No email'}
             </Text>
           </View>
 
-          {attendanceRecord.location?.address && (
+          {user.startDate && (
             <View style={styles.row}>
-              <Text style={styles.label}>Location:</Text>
-              <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
-                {attendanceRecord.location.address}
-              </Text>
-            </View>
-          )}
-
-          {/* Show confirmation status if available */}
-          {attendanceRecord.confirmed && (
-            <View style={styles.row}>
-              <Text style={styles.label}>Confirmed:</Text>
-              <Text style={[styles.value, {color: '#2B6000', fontFamily: 'Poppins-SemiBold'}]}>
-                ✓ Yes
+              <Text style={styles.label}>Start Date:</Text>
+              <Text style={styles.value}>
+                {user.startDate}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Attendance Photo Section - Updated to use attendance photo instead of profile photo */}
+        {/* Profile Photo Section */}
         <View style={styles.imageBox}>
-          {attendanceRecord.photo ? (
+          {user.profilePictureBase64 ? (
             <Image
-              source={{uri: attendanceRecord.photo}}
-              style={styles.attendanceImage}
+              source={{uri: `data:image/jpeg;base64,${user.profilePictureBase64}`}}
+              style={styles.profileImage}
               resizeMode="cover"
               onError={(err) => {
-                console.error('Attendance image load error:', err);
-              }}
-            />
-          ) : attendanceRecord.photoBase64 ? (
-            <Image
-              source={{uri: attendanceRecord.photoBase64}}
-              style={styles.attendanceImage}
-              resizeMode="cover"
-              onError={(err) => {
-                console.error('Attendance image load error:', err);
+                console.error('Profile image load error:', err);
               }}
             />
           ) : (
             <View style={styles.placeholderImage}>
               <Text style={styles.placeholderText}>
-                No Photo
+                {(user.fullName || 'U').charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
@@ -485,19 +439,19 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
-  dateGroup: {
+  letterGroup: {
     marginBottom: 20,
   },
-  dateHeader: {
-    fontSize: 16,
+  letterHeader: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     paddingHorizontal: 18,
     paddingVertical: 8,
     backgroundColor: '#F5F5F5',
-    fontFamily: 'Poppins-SemiBold',
+    fontFamily: 'Poppins-Bold',
   },
-  attendanceCard: {
+  userCard: {
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
@@ -510,22 +464,6 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderColor: '#E8E8E8',
     borderWidth: 1,
-  },
-  statusBadge: {
-    backgroundColor: '#B4FFB1',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 15,
-    paddingVertical: 4,
-    borderRadius: 37,
-    marginBottom: 12,
-    minWidth: 80,
-  },
-  statusText: {
-    fontFamily: 'Poppins-SemiBold',
-    color: '#2B6000',
-    fontSize: 12,
-    textAlign: 'center',
-    fontWeight: '600',
   },
   // New styles for the layout with attendance image
   detailsContainer: {
@@ -555,15 +493,15 @@ const styles = StyleSheet.create({
     color: '#666666',
     flex: 1,
   },
-  // Attendance image styles (matching Card component)
+  // Profile image styles
   imageBox: {
     width: 80,
     height: 80,
-    borderRadius: 12,
+    borderRadius: 40,
     overflow: 'hidden',
     backgroundColor: '#D1D5DB',
   },
-  attendanceImage: {
+  profileImage: {
     width: '100%',
     height: '100%',
   },
@@ -575,9 +513,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderText: {
-    fontSize: 12,
+    fontSize: 24,
     color: '#64748B',
-    fontFamily: 'Poppins-Regular',
+    fontFamily: 'Poppins-Bold',
     textAlign: 'center',
+  },
+  // Header with logout button aligned
+  headerWithLogout: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingRight: 16,
+  },
+  logoutButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  logoutButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
   },
 });

@@ -1,27 +1,111 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Platform } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { ButtonNavAdmin, Header, TextInputAdmin } from '../../components';
 import { getDatabase, ref, onValue } from 'firebase/database';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+// Type definitions
+interface AttendanceRecord {
+  userId: string;
+  timestamp?: number;
+  tanggal?: string;
+  waktu?: string;
+  status?: string;
+  photo?: string;
+  photoBase64?: string;
+  location?: {
+    address?: string;
+  };
+  confirmed?: boolean;
+}
+
+interface UserData {
+  fullName?: string;
+  NIP?: string;
+  department?: string;
+  email?: string;
+}
+
+interface NavigationProps {
+  navigate: (screen: string, params?: any) => void;
+}
 
 const departments = [
   'All Departments',
-  'IT Department',
-  'HR Department',
-  'Finance Department',
-  'Marketing Department',
+  'PERENCANAAN DAN MANAJEMEN KINERJA',
+  'KEUANGAN DAN ANGGARAN',
+  'HUKUM, KEPEGAWAIAN DAN PELAYANAN PUBLIK',
+  'PENGEMBANGAN SDM',
+  'UMUM DAN PENGELOLAAN ΒΜΝ',
+  'ADVOKASI, KIE, KEHUMASAN, HUBUNGAN ANTAR LEMBAGA DAN INFORMASI PUBLIK',
+  'PELAPORAN, STATISTIK, DAN PENGELOLAAN TIK',
+  'KELUARGA BERENCANA DAN KESEHATAN REPRODUKSI',
+  'PENGENDALIAN PENDUDUK',
+  'PENGELOLAAN DAN PEMBINAAN LINI LAPANGAN',
+  'KEBIJAKAN STRATEGI, PPS, GENTING, DAN MBG',
+  'KETAHANAN KELUARGA BALITA, ANAK, DAN REMAJA',
+  'KETAHANAN KELUARGA LANSIA DAN PEMBERDAYAAN EKONOMI KELUARGA',
+  'ZI WBK/WBBM DAN SPIP',
 ];
 
-const Lists = ({ navigation }) => {
+const sessionStatuses = [
+  'All Sessions',
+  'Present',
+  'Late',
+  'Excused',
+  'Unexcused',
+];
+
+const Lists = ({ navigation }: { navigation: NavigationProps }) => {
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [searchText, setSearchText] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [usersData, setUsersData] = useState({});
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [usersData, setUsersData] = useState<Record<string, UserData>>({});
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // New state for date and session filtering
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedSession, setSelectedSession] = useState('All Sessions');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showSessionDropdown, setShowSessionDropdown] = useState(false);
+  const [datePickerDate, setDatePickerDate] = useState(new Date());
 
-  const handleSelectDept = (dept) => {
+  const handleSelectDept = (dept: string) => {
     setSelectedDept(dept);
     setShowDropdown(false);
+  };
+
+  const handleSelectSession = (session: string) => {
+    setSelectedSession(session);
+    setShowSessionDropdown(false);
+  };
+
+  const handleDateSelect = (event: any, date?: Date) => {
+    setShowDatePicker(false);
+    if (date) {
+      setSelectedDate(date);
+      setDatePickerDate(date);
+    }
+  };
+
+  const handleQuickDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setDatePickerDate(date);
+    setShowDatePicker(false);
+  };
+
+  const clearDateFilter = () => {
+    setSelectedDate(null);
+  };
+
+  const formatDateDisplay = (date: Date | null) => {
+    if (!date) return 'Select Date';
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
   };
 
   // Fetch users and attendance data from Firebase
@@ -48,7 +132,7 @@ const Lists = ({ navigation }) => {
       try {
         if (snapshot.exists()) {
           const attendanceData = snapshot.val();
-          const allAttendanceRecords = [];
+          const allAttendanceRecords: AttendanceRecord[] = [];
           
           // Process attendance data for each user
           Object.keys(attendanceData).forEach(userId => {
@@ -57,13 +141,13 @@ const Lists = ({ navigation }) => {
             
             // Handle both array and object formats
             if (Array.isArray(userAttendance)) {
-              attendanceArray = userAttendance.filter(item => item && item.timestamp);
+              attendanceArray = userAttendance.filter((item: any) => item && item.timestamp);
             } else if (typeof userAttendance === 'object') {
-              attendanceArray = Object.values(userAttendance).filter(item => item && item.timestamp);
+              attendanceArray = Object.values(userAttendance).filter((item: any) => item && item.timestamp);
             }
             
             // Add userId to each attendance record
-            attendanceArray.forEach(record => {
+            attendanceArray.forEach((record: any) => {
               allAttendanceRecords.push({
                 ...record,
                 userId: userId
@@ -92,38 +176,138 @@ const Lists = ({ navigation }) => {
     };
   }, []);
 
-  // Get today's date for filtering today's attendance
-  const getTodayDateString = () => {
-    const today = new Date();
-    return today.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
+
+  // Get attendance status from record
+  const getAttendanceStatus = (record: AttendanceRecord) => {
+    // First, check if there's a status field in the record (from Firebase)
+    if (record.status) {
+      return record.status;
+    }
+    
+    // Fallback to time-based calculation if no status field exists
+    const waktu = record.waktu;
+    if (!waktu) return 'Unexcused';
+    
+    const [hours, minutes] = waktu.split(':').map((num: string) => parseInt(num));
+    const timeInMinutes = hours * 60 + minutes;
+    const onTimeThreshold = 8 * 60; // 8:00 AM
+    const lateThreshold = 8 * 60 + 30; // 8:30 AM
+    
+    if (timeInMinutes <= onTimeThreshold) {
+      return 'Present';
+    } else if (timeInMinutes <= lateThreshold) {
+      return 'Late';
+    } else {
+      return 'Late';
+    }
   };
 
-  // Filter attendance records based on department and search text
+  // Helper function to normalize date strings for comparison
+  const normalizeDateString = (dateStr: string) => {
+    if (!dateStr) return '';
+    
+    // Remove extra spaces and normalize
+    return dateStr.trim().toLowerCase();
+  };
+
+
+  // Alternative date formats to try
+  const getAlternativeDateFormats = (date: Date) => {
+    const formats = [
+      // Indonesian long format
+      date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      }),
+      // Indonesian short format
+      date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }),
+      // ISO date format
+      date.toISOString().split('T')[0],
+      // Simple format
+      `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`,
+      // Alternative Indonesian format
+      date.toLocaleDateString('id-ID'),
+    ];
+    
+    return formats;
+  };
+
+  // Filter attendance records based on department, search text, date, and session
   const getFilteredAttendanceRecords = () => {
     let filtered = attendanceRecords;
 
+    console.log('Total attendance records:', attendanceRecords.length);
+
     // Filter by name search
     if (searchText.trim()) {
-      filtered = filtered.filter(record => {
+      filtered = filtered.filter((record: AttendanceRecord) => {
         const userData = usersData[record.userId];
         const userName = userData?.fullName || '';
         return userName.toLowerCase().includes(searchText.toLowerCase());
       });
+      console.log('After name filter:', filtered.length);
     }
 
     // Filter by department
     if (selectedDept && selectedDept !== 'All Departments') {
-      filtered = filtered.filter(record => {
+      filtered = filtered.filter((record: AttendanceRecord) => {
         const userData = usersData[record.userId];
         const userDepartment = userData?.department || '';
         return userDepartment === selectedDept;
       });
+      console.log('After department filter:', filtered.length);
     }
 
+    // Filter by date
+    if (selectedDate) {
+      const possibleDateFormats = getAlternativeDateFormats(selectedDate);
+      console.log('Selected date:', selectedDate);
+      console.log('Possible date formats to match:', possibleDateFormats);
+      
+      // Log some sample record dates for debugging
+      const sampleDates = filtered.slice(0, 5).map(record => record.tanggal);
+      console.log('Sample record dates:', sampleDates);
+      
+      filtered = filtered.filter((record: AttendanceRecord) => {
+        const recordDate = record.tanggal || '';
+        const normalizedRecordDate = normalizeDateString(recordDate);
+        
+        // Try to match against any of the possible date formats
+        const matches = possibleDateFormats.some(format => {
+          const normalizedFormat = normalizeDateString(format);
+          return normalizedRecordDate === normalizedFormat;
+        });
+        
+        // Also try timestamp-based comparison if available
+        if (!matches && record.timestamp) {
+          const recordDateFromTimestamp = new Date(record.timestamp);
+          const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+          const recordDateOnly = new Date(recordDateFromTimestamp.getFullYear(), recordDateFromTimestamp.getMonth(), recordDateFromTimestamp.getDate());
+          
+          return selectedDateOnly.getTime() === recordDateOnly.getTime();
+        }
+        
+        return matches;
+      });
+      
+      console.log('After date filter:', filtered.length);
+    }
+
+    // Filter by session status
+    if (selectedSession && selectedSession !== 'All Sessions') {
+      filtered = filtered.filter((record: AttendanceRecord) => {
+        const status = getAttendanceStatus(record);
+        return status === selectedSession;
+      });
+      console.log('After session filter:', filtered.length);
+    }
+
+    console.log('Final filtered records:', filtered.length);
     return filtered;
   };
 
@@ -149,8 +333,8 @@ const Lists = ({ navigation }) => {
     }
 
     // Group by date for better organization
-    const groupedRecords = {};
-    filteredRecords.forEach(record => {
+    const groupedRecords: Record<string, AttendanceRecord[]> = {};
+    filteredRecords.forEach((record: AttendanceRecord) => {
       const date = record.tanggal || 'Unknown Date';
       if (!groupedRecords[date]) {
         groupedRecords[date] = [];
@@ -161,7 +345,7 @@ const Lists = ({ navigation }) => {
     return Object.keys(groupedRecords).map(date => (
       <View key={date} style={styles.dateGroup}>
         <Text style={styles.dateHeader}>{date}</Text>
-        {groupedRecords[date].map((record, index) => (
+        {groupedRecords[date].map((record: AttendanceRecord, index: number) => (
           <AttendanceCard
             key={`${record.userId}-${record.timestamp}-${index}`}
             attendanceRecord={record}
@@ -191,11 +375,14 @@ const Lists = ({ navigation }) => {
         <Header text="Lists" />
 
         <View style={styles.textinput}>
+          {/* Department and Name Search Row */}
           <TextInputAdmin
             style={{ marginBottom: 15 }}
             text="Department"
             leftValue={selectedDept}
             onLeftPress={() => setShowDropdown(!showDropdown)}
+            onLeftChange={() => {}}
+            onRightPress={() => {}}
             isLeftDropdown={true}
             placeholder="Search Name"
             rightValue={searchText}
@@ -224,7 +411,143 @@ const Lists = ({ navigation }) => {
             </View>
           )}
 
-          <TextInputAdmin style={styles.textinput1} />
+          {/* Date and Session Filter Row using TextInputAdmin */}
+          <TextInputAdmin
+            style={{ marginBottom: 15 }}
+            text={formatDateDisplay(selectedDate)}
+            leftValue={formatDateDisplay(selectedDate)}
+            onLeftPress={() => setShowDatePicker(true)}
+            onLeftChange={() => {}}
+            isLeftDropdown={true}
+            placeholder="Session Status"
+            rightValue={selectedSession}
+            onRightPress={() => setShowSessionDropdown(!showSessionDropdown)}
+            onRightChange={() => {}}
+            isRightDropdown={true}
+          />
+
+          {/* Clear Date Filter Button */}
+          {selectedDate && (
+            <View style={styles.clearDateContainer}>
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={clearDateFilter}
+              >
+                <Text style={styles.clearButtonText}>Clear Date Filter</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Session Dropdown */}
+          {showSessionDropdown && (
+            <View style={styles.sessionDropdownBox}>
+              {sessionStatuses.map((session, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.dropdownItem,
+                    index === sessionStatuses.length - 1 && { borderBottomWidth: 0 }
+                  ]}
+                  onPress={() => handleSelectSession(session)}
+                >
+                  <Text style={[
+                    styles.dropdownText,
+                    selectedSession === session && styles.selectedDropdownText
+                  ]}>
+                    {session}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Native Date Picker */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={datePickerDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateSelect}
+              maximumDate={new Date()}
+            />
+          )}
+
+          {/* Enhanced Date Selection Modal with Quick Options */}
+          <Modal
+            visible={showDatePicker && Platform.OS === 'ios'}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.datePickerContainer}>
+                <Text style={styles.datePickerTitle}>Select Date</Text>
+                <Text style={styles.datePickerSubtitle}>Choose a date to filter attendance records</Text>
+                
+                {/* Quick Date Options */}
+                <View style={styles.quickDateOptions}>
+                  <TouchableOpacity
+                    style={styles.quickDateButton}
+                    onPress={() => handleQuickDateSelect(new Date())}
+                  >
+                    <Text style={styles.quickDateText}>Today</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.quickDateButton}
+                    onPress={() => {
+                      const yesterday = new Date();
+                      yesterday.setDate(yesterday.getDate() - 1);
+                      handleQuickDateSelect(yesterday);
+                    }}
+                  >
+                    <Text style={styles.quickDateText}>Yesterday</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.quickDateButton}
+                    onPress={() => {
+                      const lastWeek = new Date();
+                      lastWeek.setDate(lastWeek.getDate() - 7);
+                      handleQuickDateSelect(lastWeek);
+                    }}
+                  >
+                    <Text style={styles.quickDateText}>Last Week</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* iOS Date Picker */}
+                <DateTimePicker
+                  value={datePickerDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={(event: any, date?: Date) => {
+                    if (date) {
+                      setDatePickerDate(date);
+                    }
+                  }}
+                  maximumDate={new Date()}
+                  style={styles.iosDatePicker}
+                />
+
+                <View style={styles.datePickerButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={() => {
+                      setSelectedDate(datePickerDate);
+                      setShowDatePicker(false);
+                    }}
+                  >
+                    <Text style={styles.confirmButtonText}>Confirm</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </View>
 
         <View style={styles.card}>
@@ -238,9 +561,17 @@ const Lists = ({ navigation }) => {
 };
 
 // Updated AttendanceCard component with improved status handling (matching DashboardAdmin)
-const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
+const AttendanceCard = ({
+  attendanceRecord,
+  userData,
+  onPress
+}: {
+  attendanceRecord: AttendanceRecord;
+  userData: UserData;
+  onPress: () => void;
+}) => {
   // Updated getAttendanceStatus to prioritize Firebase status field (same as DashboardAdmin)
-  const getAttendanceStatus = (record) => {
+  const getAttendanceStatus = (record: AttendanceRecord) => {
     // First, check if there's a status field in the record (from Firebase)
     if (record.status) {
       return record.status;
@@ -250,7 +581,7 @@ const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
     const waktu = record.waktu;
     if (!waktu) return 'Unexcused';
     
-    const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
+    const [hours, minutes] = waktu.split(':').map((num: string) => parseInt(num));
     const timeInMinutes = hours * 60 + minutes;
     const onTimeThreshold = 8 * 60; // 8:00 AM
     const lateThreshold = 8 * 60 + 30; // 8:30 AM
@@ -265,7 +596,7 @@ const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
   };
 
   // Updated getStatusStyle to handle all status types (same as DashboardAdmin)
-  const getStatusStyle = (status) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Present':
         return {
@@ -364,7 +695,7 @@ const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
               source={{uri: attendanceRecord.photo}}
               style={styles.attendanceImage}
               resizeMode="cover"
-              onError={(err) => {
+              onError={(err: any) => {
                 console.error('Attendance image load error:', err);
               }}
             />
@@ -373,7 +704,7 @@ const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
               source={{uri: attendanceRecord.photoBase64}}
               style={styles.attendanceImage}
               resizeMode="cover"
-              onError={(err) => {
+              onError={(err: any) => {
                 console.error('Attendance image load error:', err);
               }}
             />
@@ -555,5 +886,126 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontFamily: 'Poppins-Regular',
     textAlign: 'center',
+  },
+  // Clear date filter styles
+  clearDateContainer: {
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  clearButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'center',
+  },
+  clearButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Medium',
+    color: 'white',
+  },
+  sessionDropdownBox: {
+    backgroundColor: '#fff',
+    marginTop: -10,
+    marginBottom: 10,
+    marginHorizontal: 16,
+    borderRadius: 8,
+    borderColor: '#D0D0D0',
+    borderWidth: 1,
+    zIndex: 10,
+    elevation: 3,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  // Date picker modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    margin: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins-Bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  datePickerSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  quickDateOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    width: '100%',
+  },
+  quickDateButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  quickDateText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Medium',
+    color: 'white',
+  },
+  datePickerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    width: '100%',
+    gap: 10,
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Medium',
+    color: '#666',
+  },
+  confirmButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+  },
+  confirmButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Medium',
+    color: 'white',
+  },
+  iosDatePicker: {
+    width: '100%',
+    marginVertical: 10,
   },
 });
