@@ -7,10 +7,10 @@ import { getAuth } from 'firebase/auth';
 import app from '../../config/Firebase'; // Adjust path as needed
 
 // Move getAttendanceStatus function outside the component
-const getAttendanceStatus = (waktu) => {
+const getAttendanceStatus = (waktu: string): string => {
   if (!waktu) return 'Unexcused';
   
-  const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
+  const [hours, minutes] = waktu.split(':').map((num: string) => parseInt(num));
   const timeInMinutes = hours * 60 + minutes;
   const onTimeThreshold = 8 * 60; // 8:00 AM
   const lateThreshold = 8 * 60 + 30; // 8:30 AM
@@ -25,7 +25,7 @@ const getAttendanceStatus = (waktu) => {
 };
 
 // Updated UserDetailsCard component
-const UserDetailsCard = ({ userData }) => {
+const UserDetailsCard = ({ userData }: { userData: any }) => {
   return (
     <View style={styles.card}>
       <Text style={styles.title}>User's details</Text>
@@ -50,12 +50,16 @@ const UserDetailsCard = ({ userData }) => {
 };
 
 // Updated ScanDetailsCard component with improved status handling
-const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStatus }) => {
+const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: { 
+  attendanceData: any; 
+  onStatusUpdate: (status: string) => void; 
+  currentStatus: string; 
+}) => {
   const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
 
   const statusOptions = ['Present', 'Late', 'Excused', 'Unexcused'];
 
-  const getStatusStyle = (status) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Present':
         return {
@@ -85,7 +89,7 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStat
     }
   };
 
-  const formatDate = (timestamp) => {
+  const formatDate = (timestamp: number): string => {
     if (!timestamp) return 'Not recorded';
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-GB', {
@@ -95,7 +99,7 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStat
     });
   };
 
-  const formatTime = (waktu) => {
+  const formatTime = (waktu: string): string => {
     if (!waktu) return 'Not recorded';
     // Convert 24-hour format to 12-hour format
     const [hours, minutes] = waktu.split(':');
@@ -105,7 +109,7 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStat
     return `${hour12}:${minutes} ${ampm}`;
   };
 
-  const handleStatusUpdate = (newStatus) => {
+  const handleStatusUpdate = (newStatus: string) => {
     setShowStatusDropdown(false);
     if (onStatusUpdate) {
       onStatusUpdate(newStatus);
@@ -124,12 +128,12 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStat
     const scheme = Platform.select({ 
       ios: 'maps:0,0?q=', 
       android: 'geo:0,0?q=' 
-    });
+    }) || 'geo:0,0?q=';
     const latLng = `${latitude},${longitude}`;
     const url = Platform.select({
       ios: `${scheme}${label}@${latLng}`,
       android: `${scheme}${latLng}(${label})`
-    });
+    }) || `${scheme}${latLng}(${label})`;
 
     // Try to open native maps first, fallback to Google Maps web
     Linking.canOpenURL(url)
@@ -175,14 +179,14 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStat
           <View style={styles.row}>
             <Text style={styles.label}>Date:</Text>
             <Text style={styles.value}>
-              {attendanceData?.tanggal || formatDate(attendanceData?.timestamp)}
+              {attendanceData?.tanggal || formatDate(attendanceData?.timestamp || 0)}
             </Text>
           </View>
 
           <View style={styles.row}>
             <Text style={styles.label}>Time:</Text>
             <Text style={styles.value}>
-              {formatTime(attendanceData?.waktu)}
+              {formatTime(attendanceData?.waktu || '')}
             </Text>
           </View>
 
@@ -248,7 +252,7 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStat
 };
 
 // Main UserDetail component with improved Firebase integration
-const UserDetail = ({ route, navigation }) => {
+const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
   const { 
     userId, 
     name, 
@@ -309,19 +313,103 @@ const UserDetail = ({ route, navigation }) => {
     };
   };
 
-  // Update attendance status in Firebase Realtime Database
-  const updateAttendanceInFirebase = async (status, confirmed = false) => {
-    const finalAttendanceKey = attendanceId || attendanceKey;
-    
-    if (!finalAttendanceKey) {
-      Alert.alert('Error', 'Attendance ID not found. Cannot update record.');
-      return false;
+  // Find the correct attendance key by searching through all attendance records
+  const findAttendanceKey = async (targetUserId: string, attendanceData: any): Promise<string | null> => {
+    try {
+      const database = getDatabase(app);
+      const attendanceRef = ref(database, `attendance/${targetUserId}`);
+      const snapshot = await get(attendanceRef);
+      
+      if (!snapshot.exists()) {
+        console.log('No attendance data found for user:', targetUserId);
+        return null;
+      }
+      
+      const data = snapshot.val();
+      console.log('Searching through attendance data:', data);
+      
+      // If attendanceData has a timestamp, try to find matching record
+      if (attendanceData?.timestamp) {
+        if (Array.isArray(data)) {
+          const index = data.findIndex(item => 
+            item && item.timestamp === attendanceData.timestamp
+          );
+          if (index !== -1) {
+            console.log('Found matching record at index:', index);
+            return index.toString();
+          }
+        } else if (typeof data === 'object') {
+          const matchingKey = Object.keys(data).find(key => 
+            data[key] && data[key].timestamp === attendanceData.timestamp
+          );
+          if (matchingKey) {
+            console.log('Found matching record with key:', matchingKey);
+            return matchingKey;
+          }
+        }
+      }
+      
+      // Fallback: try to find by date and time
+      if (attendanceData?.tanggal && attendanceData?.waktu) {
+        if (Array.isArray(data)) {
+          const index = data.findIndex(item => 
+            item && item.tanggal === attendanceData.tanggal && item.waktu === attendanceData.waktu
+          );
+          if (index !== -1) {
+            console.log('Found matching record by date/time at index:', index);
+            return index.toString();
+          }
+        } else if (typeof data === 'object') {
+          const matchingKey = Object.keys(data).find(key => 
+            data[key] && data[key].tanggal === attendanceData.tanggal && data[key].waktu === attendanceData.waktu
+          );
+          if (matchingKey) {
+            console.log('Found matching record by date/time with key:', matchingKey);
+            return matchingKey;
+          }
+        }
+      }
+      
+      console.log('No matching attendance record found');
+      return null;
+    } catch (error) {
+      console.error('Error searching for attendance key:', error);
+      return null;
     }
+  };
 
+  // Update attendance status in Firebase Realtime Database
+  const updateAttendanceInFirebase = async (status: string, confirmed = false): Promise<boolean> => {
+    let finalAttendanceKey = attendanceId || attendanceKey;
+    
     const targetUserId = userData?.uid || userId;
     if (!targetUserId) {
       Alert.alert('Error', 'User ID not found. Cannot update record.');
       return false;
+    }
+
+    console.log('Initial attendance key:', finalAttendanceKey);
+    console.log('Target user ID:', targetUserId);
+    console.log('Attendance data:', attendanceData);
+
+    // If no key provided or key is invalid, try to find the correct one
+    if (!finalAttendanceKey) {
+      console.log('No attendance key provided, searching for correct key...');
+      finalAttendanceKey = await findAttendanceKey(targetUserId, attendanceData);
+      
+      if (!finalAttendanceKey) {
+        Alert.alert(
+          'Error', 
+          'Attendance record not found. This might be because:\n\n' +
+          '• The attendance record was deleted\n' +
+          '• The record structure has changed\n' +
+          '• There\'s a data synchronization issue\n\n' +
+          'Please try refreshing the list and try again.'
+        );
+        return false;
+      }
+      
+      console.log('Found attendance key:', finalAttendanceKey);
     }
 
     try {
@@ -333,28 +421,69 @@ const UserDetail = ({ route, navigation }) => {
       // Create reference to the specific attendance record
       const attendanceRef = ref(database, `attendance/${targetUserId}/${finalAttendanceKey}`);
       
+      console.log('Attempting to update path:', `attendance/${targetUserId}/${finalAttendanceKey}`);
+      
       // First, check if the record exists
       const snapshot = await get(attendanceRef);
       if (!snapshot.exists()) {
-        Alert.alert('Error', 'Attendance record not found in database.');
-        return false;
+        console.log('Record not found at path, trying to find correct key...');
+        
+        // Try to find the correct key
+        const foundKey = await findAttendanceKey(targetUserId, attendanceData);
+        if (foundKey) {
+          finalAttendanceKey = foundKey;
+          const newAttendanceRef = ref(database, `attendance/${targetUserId}/${finalAttendanceKey}`);
+          const newSnapshot = await get(newAttendanceRef);
+          
+          if (!newSnapshot.exists()) {
+            Alert.alert('Error', 'Attendance record not found in database even after searching.');
+            return false;
+          }
+          
+          console.log('Found correct path:', `attendance/${targetUserId}/${finalAttendanceKey}`);
+          
+          // Update the reference to the correct path
+          const correctAttendanceRef = ref(database, `attendance/${targetUserId}/${finalAttendanceKey}`);
+          
+          // Prepare update data
+          const updateData: any = {
+            status: status,
+            lastModified: new Date().toISOString(),
+            modifiedBy: currentUser.email || 'admin',
+          };
+
+          if (confirmed) {
+            updateData.confirmed = true;
+            updateData.confirmedAt = new Date().toISOString();
+            updateData.confirmedBy = currentUser.email || 'admin';
+          }
+
+          // Update the record in Firebase Realtime Database
+          await update(correctAttendanceRef, updateData);
+        } else {
+          Alert.alert('Error', 'Attendance record not found in database.');
+          return false;
+        }
+      } else {
+        // Record exists at the original path, proceed with update
+        console.log('Record found at original path, proceeding with update');
+        
+        // Prepare update data
+        const updateData: any = {
+          status: status,
+          lastModified: new Date().toISOString(),
+          modifiedBy: currentUser.email || 'admin',
+        };
+
+        if (confirmed) {
+          updateData.confirmed = true;
+          updateData.confirmedAt = new Date().toISOString();
+          updateData.confirmedBy = currentUser.email || 'admin';
+        }
+
+        // Update the record in Firebase Realtime Database
+        await update(attendanceRef, updateData);
       }
-
-      // Prepare update data
-      const updateData = {
-        status: status,
-        lastModified: new Date().toISOString(),
-        modifiedBy: currentUser.email || 'admin',
-      };
-
-      if (confirmed) {
-        updateData.confirmed = true;
-        updateData.confirmedAt = new Date().toISOString();
-        updateData.confirmedBy = currentUser.email || 'admin';
-      }
-
-      // Update the record in Firebase Realtime Database
-      await update(attendanceRef, updateData);
       
       console.log('Attendance updated successfully:', { 
         userId: targetUserId, 
@@ -368,16 +497,16 @@ const UserDetail = ({ route, navigation }) => {
       setHasUnsavedChanges(false);
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating attendance:', error);
       
       let errorMessage = 'Failed to update attendance record. Please try again.';
       
-      if (error.message === 'User not authenticated') {
+      if (error?.message === 'User not authenticated') {
         errorMessage = 'Admin user not authenticated. Please login again.';
-      } else if (error.code === 'PERMISSION_DENIED') {
+      } else if (error?.code === 'PERMISSION_DENIED') {
         errorMessage = 'Permission denied. You may not have access to update this record.';
-      } else if (error.code === 'NETWORK_ERROR') {
+      } else if (error?.code === 'NETWORK_ERROR') {
         errorMessage = 'Network error. Please check your internet connection.';
       }
       
@@ -389,7 +518,7 @@ const UserDetail = ({ route, navigation }) => {
   };
 
   // Handle status change from dropdown
-  const handleStatusUpdate = async (newStatus) => {
+  const handleStatusUpdate = async (newStatus: string) => {
     if (newStatus === currentStatus) {
       return; // No change needed
     }
@@ -448,7 +577,7 @@ const UserDetail = ({ route, navigation }) => {
 
   // Handle back button press with unsaved changes
   React.useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
       if (!hasUnsavedChanges) {
         return; // No unsaved changes, allow navigation
       }
@@ -532,7 +661,6 @@ const UserDetail = ({ route, navigation }) => {
             <UserDetailsCard userData={userData || { fullName: name, NIP: nip, department, email }} />
             <ScanDetailsCard 
               attendanceData={attendanceData} 
-              userData={userData}
               onStatusUpdate={handleStatusUpdate}
               currentStatus={currentStatus}
             />

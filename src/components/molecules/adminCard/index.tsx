@@ -19,6 +19,7 @@ interface UserData {
   startDate?: string;
   profilePictureBase64?: string;
   role?: string;
+  uid?: string;
 }
 
 interface AttendanceData {
@@ -30,6 +31,7 @@ interface AttendanceData {
     isHighAccuracy?: boolean;
   };
   timestamp?: number;
+  attendanceKey?: string; // Add this to store the key
 }
 
 interface AdminCardProps {
@@ -41,6 +43,7 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
   const navigation = useNavigation();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [todayAttendance, setTodayAttendance] = useState<AttendanceData | null>(null);
+  const [attendanceKey, setAttendanceKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,7 +86,6 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
   };
 
   const createFallbackUserData = (id: string): UserData => {
-    // Add safety check for userId
     const safeId = id || 'unknown';
     const displayId = safeId.length >= 8 ? safeId.substring(0, 8) : safeId;
     
@@ -91,12 +93,12 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
       fullName: 'User ' + displayId,
       email: 'No email provided',
       department: 'Unknown',
-      NIP: safeId
+      NIP: safeId,
+      uid: id // Add the uid here
     };
   };
 
   useEffect(() => {
-    // Add early return if userId is not provided
     if (!userId) {
       console.error('AdminCard: userId is required but not provided');
       setError('User ID is required');
@@ -119,7 +121,8 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
             try {
               if (snapshot.exists()) {
                 const data = snapshot.val();
-                setUserData(data);
+                // Make sure to include the uid
+                setUserData({...data, uid: userId});
                 setError(null);
               } else {
                 // Handle case where user exists but has no profile data
@@ -159,24 +162,66 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
             try {
               if (snapshot.exists()) {
                 const data = snapshot.val();
-                let attendanceArray: AttendanceData[] = [];
+                console.log('Raw attendance data for user', userId, ':', data);
+                
+                let attendanceEntries: Array<{data: AttendanceData, key: string}> = [];
                 
                 if (Array.isArray(data)) {
-                  attendanceArray = data.filter((item: any) => item && item.timestamp);
+                  // Handle array format - use actual indices that exist in Firebase
+                  attendanceEntries = data
+                    .map((item: any, index: number) => {
+                      if (item && item.timestamp) {
+                        return {
+                          data: {...item, attendanceKey: index.toString()},
+                          key: index.toString()
+                        };
+                      }
+                      return null;
+                    })
+                    .filter((entry): entry is {data: AttendanceData, key: string} => entry !== null);
                 } else if (typeof data === 'object') {
-                  attendanceArray = Object.values(data).filter((item: any) => item && item.timestamp);
+                  // Handle object format - use actual Firebase keys
+                  attendanceEntries = Object.entries(data)
+                    .map(([key, value]) => {
+                      if (value && (value as any).timestamp) {
+                        return {
+                          data: {...(value as any), attendanceKey: key},
+                          key: key
+                        };
+                      }
+                      return null;
+                    })
+                    .filter((entry): entry is {data: AttendanceData, key: string} => entry !== null);
                 }
                 
-                attendanceArray.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                console.log('Processed attendance entries:', attendanceEntries);
+                
+                // Sort by timestamp (most recent first)
+                const sortedEntries = attendanceEntries
+                  .sort((a, b) => (b.data.timestamp || 0) - (a.data.timestamp || 0));
                 
                 const todayDate = getTodayDate();
-                const todayRecord = attendanceArray.find(
-                  (record) => record.tanggal === todayDate
+                console.log('Looking for today date:', todayDate);
+                
+                const todayEntry = sortedEntries.find(
+                  (entry) => entry.data.tanggal === todayDate
                 );
                 
-                setTodayAttendance(todayRecord || null);
+                console.log('Found today entry:', todayEntry);
+                
+                if (todayEntry) {
+                  setTodayAttendance(todayEntry.data);
+                  setAttendanceKey(todayEntry.key);
+                  console.log('Set attendance key:', todayEntry.key);
+                } else {
+                  setTodayAttendance(null);
+                  setAttendanceKey(null);
+                  console.log('No attendance found for today');
+                }
               } else {
+                console.log('No attendance data exists for user:', userId);
                 setTodayAttendance(null);
+                setAttendanceKey(null);
               }
               
               setLoading(false);
@@ -255,10 +300,17 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
           email: userData.email || 'No email',
           status: getAttendanceStatus(todayAttendance?.waktu),
           attendanceData: todayAttendance,
+          userData: userData, // Pass the complete user data
+          attendanceId: attendanceKey, // Pass the attendance key
+          attendanceKey: attendanceKey, // Also pass as attendanceKey for backward compatibility
         };
         
         console.log('Navigating with params:', navigationParams);
-        navigation.navigate('UserDetail' as never, navigationParams as never);
+        console.log('Attendance Key:', attendanceKey);
+        (navigation as any).navigate('UserDetail', navigationParams);
+      } else {
+        console.error('Missing userData or navigation:', { userData: !!userData, navigation: !!navigation });
+        Alert.alert('Error', 'Unable to navigate. Missing required data.');
       }
     } catch (err) {
       console.error('Error during navigation:', err);
