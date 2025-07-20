@@ -30,6 +30,7 @@ interface AttendanceItem {
   location?: LocationData;
   timestamp?: number;
   photo?: string;
+  status?: string; // Added status field
 }
 
 const Card = () => {
@@ -42,11 +43,11 @@ const Card = () => {
     try {
       const auth = getAuth();
       const user = auth.currentUser;
-      
+
       if (!user) {
         return null;
       }
-      
+
       return {
         uid: user.uid,
         email: user.email,
@@ -66,7 +67,7 @@ const Card = () => {
       return date.toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'long',
-        year: 'numeric'
+        year: 'numeric',
       });
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -74,36 +75,10 @@ const Card = () => {
     }
   };
 
-  // Determine attendance status based on time
-  const getAttendanceStatus = (waktu?: string) => {
-    if (!waktu) return 'Unknown';
-    
-    try {
-      // Extract hour and minute from time string (format: "HH:MM")
-      const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
-      const timeInMinutes = hours * 60 + minutes;
-      
-      // Define time thresholds (adjust according to your business rules)
-      const onTimeThreshold = 8 * 60; // 08:00 in minutes
-      const lateThreshold = 8 * 60 + 30; // 08:30 in minutes
-      
-      if (timeInMinutes <= onTimeThreshold) {
-        return 'Present';
-      } else if (timeInMinutes <= lateThreshold) {
-        return 'Late';
-      } else {
-        return 'Late';
-      }
-    } catch (error) {
-      console.error('Error calculating attendance status:', error);
-      return 'Unknown';
-    }
-  };
-
   // Fetch attendance data from Firebase
   const fetchAttendanceData = () => {
     const currentUser = getCurrentUser();
-    
+
     if (!currentUser) {
       setLoading(false);
       showMessage({
@@ -117,26 +92,30 @@ const Card = () => {
     try {
       const database = getDatabase(app);
       const userAttendanceRef = ref(database, `attendance/${currentUser.uid}`);
-      
+
       // Listen for data changes
       const unsubscribe = onValue(
-        userAttendanceRef, 
-        (snapshot) => {
+        userAttendanceRef,
+        snapshot => {
           try {
             const data = snapshot.val();
-            
+
             if (data) {
               // Convert object to array and sort by timestamp (newest first)
-              const attendanceArray: AttendanceItem[] = Object.keys(data).map(key => ({
-                id: key,
-                ...data[key],
-              })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-              
+              const attendanceArray: AttendanceItem[] = Object.keys(data)
+                .map(key => ({
+                  id: key,
+                  ...data[key],
+                  // Ensure status is included from Firebase data
+                  status: data[key].status || 'Unknown',
+                }))
+                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
               setAttendanceData(attendanceArray);
             } else {
               setAttendanceData([]);
             }
-            
+
             setLoading(false);
             setRefreshing(false);
           } catch (error) {
@@ -145,8 +124,8 @@ const Card = () => {
             setLoading(false);
             setRefreshing(false);
           }
-        }, 
-        (error) => {
+        },
+        error => {
           console.error('Firebase fetch error:', error);
           showMessage({
             message: 'Error',
@@ -155,7 +134,7 @@ const Card = () => {
           });
           setLoading(false);
           setRefreshing(false);
-        }
+        },
       );
 
       // Return cleanup function that properly removes the listener
@@ -176,14 +155,14 @@ const Card = () => {
 
   useEffect(() => {
     let cleanup: (() => void) | null = null;
-    
+
     try {
       cleanup = fetchAttendanceData();
     } catch (error) {
       console.error('Error in useEffect:', error);
       setLoading(false);
     }
-    
+
     // Cleanup function
     return () => {
       if (cleanup && typeof cleanup === 'function') {
@@ -243,13 +222,23 @@ const Card = () => {
     try {
       Alert.alert(
         'Detail Absensi',
-        `Tanggal: ${item.tanggal || 'Tidak diketahui'}\nWaktu: ${item.waktu || 'Tidak diketahui'}\nLokasi: ${item.location?.address || 'Tidak diketahui'}\nAlamat Lengkap: ${item.location?.fullAddress || 'Tidak diketahui'}\nAkurasi: ±${item.location?.accuracy?.toFixed(1) || 0}m\nStatus Akurasi: ${item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'}`,
+        `Status: ${item.status || 'Tidak diketahui'}\nTanggal: ${
+          item.tanggal || 'Tidak diketahui'
+        }\nWaktu: ${item.waktu || 'Tidak diketahui'}\nLokasi: ${
+          item.location?.address || 'Tidak diketahui'
+        }\nAlamat Lengkap: ${
+          item.location?.fullAddress || 'Tidak diketahui'
+        }\nAkurasi: ±${
+          item.location?.accuracy?.toFixed(1) || 0
+        }m\nStatus Akurasi: ${
+          item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'
+        }`,
         [
           {
             text: 'Tutup',
             style: 'cancel',
           },
-        ]
+        ],
       );
     } catch (error) {
       console.error('Error showing card details:', error);
@@ -264,9 +253,9 @@ const Card = () => {
   // Render single card item
   const renderCardItem = ({item}: {item: AttendanceItem}) => {
     try {
-      const status = getAttendanceStatus(item.waktu);
-      const displayLocation = item.location?.placeName 
-        ? `${item.location.placeName}` 
+      const status = item.status || 'Unknown';
+      const displayLocation = item.location?.placeName
+        ? `${item.location.placeName}`
         : item.location?.address || 'Lokasi tidak diketahui';
 
       return (
@@ -277,44 +266,55 @@ const Card = () => {
                 {status}
               </Text>
             </View>
-            
+
             <View style={styles.detailsContainer}>
               <View style={styles.textSection}>
                 <View style={styles.row}>
                   <Text style={styles.label}>Date:</Text>
-                  <Text style={styles.value}>{item.tanggal || 'Tidak diketahui'}</Text>
+                  <Text style={styles.value}>
+                    {item.tanggal || 'Tidak diketahui'}
+                  </Text>
                 </View>
-                
+
                 <View style={styles.row}>
                   <Text style={styles.label}>Location:</Text>
-                  <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
+                  <Text
+                    style={styles.value}
+                    numberOfLines={2}
+                    ellipsizeMode="tail">
                     {displayLocation}
                   </Text>
                 </View>
-                
+
                 <View style={styles.row}>
-                  <Text style={styles.label}>Start Time:</Text>
-                  <Text style={styles.value}>{item.waktu || 'Tidak diketahui'}</Text>
+                  <Text style={styles.label}>Time:</Text>
+                  <Text style={styles.value}>
+                    {item.waktu || 'Tidak diketahui'}
+                  </Text>
                 </View>
-                
+
                 <View style={styles.row}>
                   <Text style={styles.label}>Accuracy:</Text>
-                  <Text style={[
-                    styles.value,
-                    item.location?.isHighAccuracy ? styles.highAccuracy : styles.lowAccuracy
-                  ]}>
-                    {item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'} (±{item.location?.accuracy?.toFixed(1) || 0}m)
+                  <Text
+                    style={[
+                      styles.value,
+                      item.location?.isHighAccuracy
+                        ? styles.highAccuracy
+                        : styles.lowAccuracy,
+                    ]}>
+                    {item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'} (±
+                    {item.location?.accuracy?.toFixed(1) || 0}m)
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.imageContainer}>
                 {item.photo ? (
                   <Image
                     source={{uri: item.photo}}
                     style={styles.imageBox}
                     resizeMode="cover"
-                    onError={(error) => {
+                    onError={error => {
                       console.error('Image load error:', error);
                     }}
                   />
@@ -363,7 +363,7 @@ const Card = () => {
       <FlatList
         data={attendanceData}
         renderItem={renderCardItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -376,7 +376,7 @@ const Card = () => {
         contentContainerStyle={
           attendanceData.length === 0 ? styles.emptyListContainer : null
         }
-        onError={(error) => {
+        onError={error => {
           console.error('FlatList error:', error);
         }}
       />

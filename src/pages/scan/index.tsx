@@ -10,7 +10,7 @@ import {
   PermissionsAndroid,
   Platform,
   Linking,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import React, {useState} from 'react';
 import {Button, Buttonnavigation, Header} from '../../components';
@@ -25,7 +25,9 @@ import app from '../../config/Firebase'; // Adjust path as needed
 const Scan = ({navigation}: {navigation: any}) => {
   const [tanggal, setTanggal] = useState('');
   const [waktu, setWaktu] = useState('');
-  const [photo, setPhoto] = useState<{uri: string, base64?: string} | null>(null);
+  const [photo, setPhoto] = useState<{uri: string; base64?: string} | null>(
+    null,
+  );
   const [location, setLocation] = useState<{
     latitude: number | null;
     longitude: number | null;
@@ -52,17 +54,43 @@ const Scan = ({navigation}: {navigation: any}) => {
   const getCurrentUser = () => {
     const auth = getAuth();
     const user = auth.currentUser;
-    
+
     if (!user) {
       throw new Error('User not authenticated');
     }
-    
+
     return {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
       phoneNumber: user.phoneNumber,
     };
+  };
+
+  // Function to determine attendance status based on time
+  const getAttendanceStatus = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes;
+
+    // Convert time ranges to minutes
+    const presentStart = 8 * 60; // 08:00
+    const presentEnd = 8 * 60 + 30; // 08:30
+    const unexcusedStart = 17 * 60; // 17:00
+    const unexcusedEnd = 7 * 60 + 59; // 07:59 (next day, but we'll handle as same day for simplicity)
+
+    // Check for Present (8:00 - 8:30 AM)
+    if (totalMinutes >= presentStart && totalMinutes <= presentEnd) {
+      return 'Present';
+    }
+
+    // Check for Unexcused (17:00 - 07:59)
+    // This handles both evening (17:00-23:59) and early morning (00:00-07:59)
+    if (totalMinutes >= unexcusedStart || totalMinutes <= unexcusedEnd) {
+      return 'Unexcused';
+    }
+
+    // Everything else is Late
+    return 'Late';
   };
 
   // Multiple geocoding services for better accuracy and place names
@@ -81,12 +109,14 @@ const Scan = ({navigation}: {navigation: any}) => {
           },
         ),
         // LocationIQ - Alternative service (free tier available)
-        axios.get(
-          `https://us1.locationiq.com/v1/reverse.php?key=YOUR_LOCATIONIQ_KEY&lat=${lat}&lon=${lon}&format=json&zoom=18&addressdetails=1`,
-          {
-            timeout: 8000,
-          },
-        ).catch(() => null), // Fallback if no API key
+        axios
+          .get(
+            `https://us1.locationiq.com/v1/reverse.php?key=YOUR_LOCATIONIQ_KEY&lat=${lat}&lon=${lon}&format=json&zoom=18&addressdetails=1`,
+            {
+              timeout: 8000,
+            },
+          )
+          .catch(() => null), // Fallback if no API key
       ]);
 
       let bestResult = null;
@@ -96,17 +126,18 @@ const Scan = ({navigation}: {navigation: any}) => {
       if (results[0].status === 'fulfilled') {
         const data = results[0].value.data;
         const {address, display_name, namedetails} = data;
-        
+
         // Extract place name from various sources
-        placeName = namedetails?.name || 
-                   address?.amenity || 
-                   address?.building || 
-                   address?.shop || 
-                   address?.office || 
-                   address?.leisure || 
-                   address?.tourism ||
-                   address?.public_building ||
-                   null;
+        placeName =
+          namedetails?.name ||
+          address?.amenity ||
+          address?.building ||
+          address?.shop ||
+          address?.office ||
+          address?.leisure ||
+          address?.tourism ||
+          address?.public_building ||
+          null;
 
         const road = address.road || address.pedestrian || '';
         const houseNumber = address.house_number || '';
@@ -116,45 +147,57 @@ const Scan = ({navigation}: {navigation: any}) => {
         const state = address.state || address.province || '';
         const postcode = address.postcode || '';
         const country = address.country || '';
-        
+
         // Build short address with house number
         const addressParts = [
           houseNumber && road ? `${road} ${houseNumber}` : road,
           village,
           suburb,
-          city
-        ].filter(Boolean);
-        
-        const shortAddress = addressParts.length > 0 ? addressParts.join(', ') : 'Lokasi tidak dikenal';
-        
-        // Full detailed address
-        const fullAddress = [
-          houseNumber && road ? `${road} ${houseNumber}` : road,
-          village,
-          suburb,
           city,
-          state,
-          postcode,
-          country
-        ].filter(Boolean).join(', ') || 'Lokasi tidak dikenal';
+        ].filter(Boolean);
+
+        const shortAddress =
+          addressParts.length > 0
+            ? addressParts.join(', ')
+            : 'Lokasi tidak dikenal';
+
+        // Full detailed address
+        const fullAddress =
+          [
+            houseNumber && road ? `${road} ${houseNumber}` : road,
+            village,
+            suburb,
+            city,
+            state,
+            postcode,
+            country,
+          ]
+            .filter(Boolean)
+            .join(', ') || 'Lokasi tidak dikenal';
 
         bestResult = {
           shortAddress,
           fullAddress,
           placeName,
-          source: 'OpenStreetMap'
+          source: 'OpenStreetMap',
         };
       }
 
       // If LocationIQ was successful and we don't have a good result, use it
-      if (!bestResult && results[1].status === 'fulfilled' && results[1].value) {
+      if (
+        !bestResult &&
+        results[1].status === 'fulfilled' &&
+        results[1].value
+      ) {
         const data = results[1].value.data;
         // Process LocationIQ result similar to above
         bestResult = {
-          shortAddress: data.display_name?.split(',').slice(0, 3).join(', ') || 'Lokasi tidak dikenal',
+          shortAddress:
+            data.display_name?.split(',').slice(0, 3).join(', ') ||
+            'Lokasi tidak dikenal',
           fullAddress: data.display_name || 'Lokasi tidak dikenal',
           placeName: data.namedetails?.name || null,
-          source: 'LocationIQ'
+          source: 'LocationIQ',
         };
       }
 
@@ -187,11 +230,13 @@ const Scan = ({navigation}: {navigation: any}) => {
 
   const fetchDateTimeAndLocation = async () => {
     setLoading(true);
-    
+
     // Date and Time
     const now = new Date();
     setTanggal(now.toLocaleDateString('id-ID'));
-    setWaktu(now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}));
+    setWaktu(
+      now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}),
+    );
 
     // Location with MAXIMUM accuracy settings
     try {
@@ -205,22 +250,28 @@ const Scan = ({navigation}: {navigation: any}) => {
       let attempts = 0;
       const maxAttempts = 3;
 
-      while (attempts < maxAttempts && (!bestPosition || bestPosition.coords.accuracy > 10)) {
+      while (
+        attempts < maxAttempts &&
+        (!bestPosition || bestPosition.coords.accuracy > 10)
+      ) {
         attempts++;
-        
+
         try {
           console.log(`Location attempt ${attempts}/${maxAttempts}`);
-          
+
           const position = await new Promise((resolve, reject) => {
             const watchId = Geolocation.watchPosition(
-              (pos) => {
+              pos => {
                 // Accept position if accuracy is very good (< 10m) or after timeout
-                if (pos.coords.accuracy <= 10 || Date.now() - startTime > 15000) {
+                if (
+                  pos.coords.accuracy <= 10 ||
+                  Date.now() - startTime > 15000
+                ) {
                   Geolocation.clearWatch(watchId);
                   resolve(pos);
                 }
               },
-              (error) => {
+              error => {
                 Geolocation.clearWatch(watchId);
                 reject(error);
               },
@@ -236,18 +287,23 @@ const Scan = ({navigation}: {navigation: any}) => {
                 forceLocationManager: true, // Android: Use LocationManager instead of FusedLocationProvider
               },
             );
-            
+
             const startTime = Date.now();
           });
 
           // Keep the most accurate position
-          if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+          if (
+            !bestPosition ||
+            position.coords.accuracy < bestPosition.coords.accuracy
+          ) {
             bestPosition = position;
           }
 
           // If we got very high accuracy (< 5m), break early
           if (position.coords.accuracy <= 5) {
-            console.log(`Excellent accuracy achieved: ${position.coords.accuracy}m`);
+            console.log(
+              `Excellent accuracy achieved: ${position.coords.accuracy}m`,
+            );
             break;
           }
 
@@ -255,24 +311,19 @@ const Scan = ({navigation}: {navigation: any}) => {
           if (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
-
         } catch (attemptError) {
           console.log(`Attempt ${attempts} failed:`, attemptError);
-          
+
           // If this is the last attempt, try with fallback settings
           if (attempts === maxAttempts) {
             try {
               bestPosition = await new Promise((resolve, reject) => {
-                Geolocation.getCurrentPosition(
-                  resolve,
-                  reject,
-                  {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 2000,
-                    distanceFilter: 1,
-                  },
-                );
+                Geolocation.getCurrentPosition(resolve, reject, {
+                  enableHighAccuracy: true,
+                  timeout: 15000,
+                  maximumAge: 2000,
+                  distanceFilter: 1,
+                });
               });
             } catch (fallbackError) {
               console.log('Fallback also failed:', fallbackError);
@@ -282,7 +333,9 @@ const Scan = ({navigation}: {navigation: any}) => {
       }
 
       if (!bestPosition) {
-        throw new Error('Tidak dapat memperoleh lokasi setelah beberapa percobaan');
+        throw new Error(
+          'Tidak dapat memperoleh lokasi setelah beberapa percobaan',
+        );
       }
 
       const accuracy = bestPosition.coords.accuracy;
@@ -320,17 +373,22 @@ const Scan = ({navigation}: {navigation: any}) => {
         isHighAccuracy,
       });
 
-      const locationText = locationDetails?.placeName 
+      const locationText = locationDetails?.placeName
         ? `${locationDetails.placeName} - ${locationDetails.shortAddress}`
-        : locationDetails?.shortAddress || 'Koordinat: ' + bestPosition.coords.latitude.toFixed(6) + ', ' + bestPosition.coords.longitude.toFixed(6);
+        : locationDetails?.shortAddress ||
+          'Koordinat: ' +
+            bestPosition.coords.latitude.toFixed(6) +
+            ', ' +
+            bestPosition.coords.longitude.toFixed(6);
 
       showMessage({
         message: `Lokasi Terdeteksi (${accuracyLevel})`,
-        description: `${locationText}\nPercobaan: ${attempts}, Akurasi: ±${accuracy.toFixed(1)}m`,
+        description: `${locationText}\nPercobaan: ${attempts}, Akurasi: ±${accuracy.toFixed(
+          1,
+        )}m`,
         type: accuracy <= 15 ? 'success' : accuracy <= 150 ? 'warning' : 'info',
         duration: 5000,
       });
-
     } catch (error) {
       setLocation(prev => ({
         ...prev,
@@ -376,7 +434,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         uri: asset.uri,
         base64: asset.base64, // Store base64 data
       });
-      
+
       // Get location after photo is successfully taken
       await fetchDateTimeAndLocation();
     } catch (error) {
@@ -390,7 +448,7 @@ const Scan = ({navigation}: {navigation: any}) => {
 
   const openInMaps = () => {
     if (!location.latitude || !location.longitude) return;
-    
+
     const url = Platform.select({
       ios: `maps://?q=${location.latitude},${location.longitude}`,
       android: `geo:${location.latitude},${location.longitude}?q=${location.latitude},${location.longitude}`,
@@ -399,7 +457,9 @@ const Scan = ({navigation}: {navigation: any}) => {
     Linking.openURL(url!).catch(err =>
       showMessage({
         message: 'Error',
-        description: 'Tidak dapat membuka peta: ' + (err.message || 'Aplikasi peta tidak ditemukan'),
+        description:
+          'Tidak dapat membuka peta: ' +
+          (err.message || 'Aplikasi peta tidak ditemukan'),
         type: 'danger',
       }),
     );
@@ -422,7 +482,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       });
       return;
     }
-    
+
     if (!location.latitude) {
       showMessage({
         message: 'Peringatan',
@@ -437,12 +497,15 @@ const Scan = ({navigation}: {navigation: any}) => {
     try {
       // Get current user information
       const currentUser = getCurrentUser();
-      
+
       // Get Firebase Realtime Database instance
       const database = getDatabase(app);
-      
+
       // Save under user's UID for better organization
       const userAttendanceRef = ref(database, `attendance/${currentUser.uid}`);
+
+      // Determine attendance status based on current time
+      const attendanceStatus = getAttendanceStatus(waktu);
 
       // Create submission data with user information
       const submissionData = {
@@ -466,26 +529,30 @@ const Scan = ({navigation}: {navigation: any}) => {
         },
         tanggal,
         waktu,
+        status: attendanceStatus, // Add attendance status based on time
         timestamp: Date.now(), // Add timestamp for sorting
         createdAt: new Date().toISOString(), // Human readable timestamp
         // Additional metadata
         deviceInfo: {
           platform: Platform.OS,
           version: Platform.Version,
-        }
+        },
       };
 
       console.log('Submitting data to Firebase for user:', currentUser.email);
+      console.log('Attendance status:', attendanceStatus);
 
       // Save to Firebase Realtime Database under user's UID
       const newAttendanceRef = await push(userAttendanceRef, submissionData);
-      
+
       console.log('Data successfully saved with ID:', newAttendanceRef.key);
 
-      // Show success message
+      // Show success message with status information
       showMessage({
         message: 'Berhasil!',
-        description: `Absensi berhasil disimpan untuk ${currentUser.email || currentUser.displayName}`,
+        description: `Absensi berhasil disimpan untuk ${
+          currentUser.email || currentUser.displayName
+        }\nStatus: ${attendanceStatus}`,
         type: 'success',
         duration: 3000,
       });
@@ -494,12 +561,11 @@ const Scan = ({navigation}: {navigation: any}) => {
       setTimeout(() => {
         navigation.navigate('Home');
       }, 1000);
-
     } catch (error) {
       console.error('Firebase submission error:', error);
-      
+
       let errorMessage = 'Terjadi kesalahan saat menyimpan ke database';
-      
+
       if (error.message === 'User not authenticated') {
         errorMessage = 'User tidak terautentikasi. Silakan login kembali.';
         // Optionally navigate to login screen
@@ -507,7 +573,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       } else {
         errorMessage = `${errorMessage}: ${error.message}`;
       }
-      
+
       // Show error message with more details
       showMessage({
         message: 'Gagal!',
@@ -522,17 +588,18 @@ const Scan = ({navigation}: {navigation: any}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         bounces={true}
-        scrollEventThrottle={16}
-      >
+        scrollEventThrottle={16}>
         <Header text="Absensi" />
         <View style={styles.content}>
           <View style={styles.photoSection}>
             <Text style={styles.sectionLabel}>Foto</Text>
-            <TouchableOpacity onPress={handleLaunchCamera} style={styles.photoContainer}>
+            <TouchableOpacity
+              onPress={handleLaunchCamera}
+              style={styles.photoContainer}>
               {photo ? (
                 <Image
                   source={{uri: photo.uri}}
@@ -541,9 +608,7 @@ const Scan = ({navigation}: {navigation: any}) => {
                 />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Text style={styles.placeholderText}>
-                    Ambil Foto
-                  </Text>
+                  <Text style={styles.placeholderText}>Ambil Foto</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -572,40 +637,49 @@ const Scan = ({navigation}: {navigation: any}) => {
             <View style={styles.locationContainer}>
               <View style={styles.locationHeader}>
                 <Text style={styles.sectionLabel}>Lokasi</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={refreshLocation}
                   style={styles.refreshButton}
-                  disabled={loading}
-                >
+                  disabled={loading}>
                   <Text style={styles.refreshButtonText}>🔄</Text>
                 </TouchableOpacity>
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[
                   styles.locationBox,
-                  location.isHighAccuracy ? styles.highAccuracyBox : styles.lowAccuracyBox
+                  location.isHighAccuracy
+                    ? styles.highAccuracyBox
+                    : styles.lowAccuracyBox,
                 ]}
                 onPress={openInMaps}
-                disabled={!location.latitude || loading}
-              >
+                disabled={!location.latitude || loading}>
                 {loading ? (
                   <ActivityIndicator size="small" color="#0000ff" />
                 ) : location.fullAddress ? (
                   <>
                     {location.placeName && (
-                      <Text style={styles.placeNameText}>{location.placeName}</Text>
+                      <Text style={styles.placeNameText}>
+                        {location.placeName}
+                      </Text>
                     )}
                     <Text style={styles.locationText}>{location.address}</Text>
-                    <Text style={styles.fullAddressText}>{location.fullAddress}</Text>
-                    <Text style={styles.coordinatesText}>
-                      {location.latitude?.toFixed(6)}, {location.longitude?.toFixed(6)}
+                    <Text style={styles.fullAddressText}>
+                      {location.fullAddress}
                     </Text>
-                    <Text style={[
-                      styles.accuracyText,
-                      location.isHighAccuracy ? styles.highAccuracyText : styles.lowAccuracyText
-                    ]}>
-                      {location.isHighAccuracy ? '✓ Akurat' : '⚠ Kurang Akurat'} (±{location.accuracy?.toFixed(1)}m)
+                    <Text style={styles.coordinatesText}>
+                      {location.latitude?.toFixed(6)},{' '}
+                      {location.longitude?.toFixed(6)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.accuracyText,
+                        location.isHighAccuracy
+                          ? styles.highAccuracyText
+                          : styles.lowAccuracyText,
+                      ]}>
+                      {location.isHighAccuracy ? '✓ Akurat' : '⚠ Kurang Akurat'}{' '}
+                      (±{location.accuracy?.toFixed(1)}m)
                     </Text>
                   </>
                 ) : location.error ? (
@@ -618,15 +692,15 @@ const Scan = ({navigation}: {navigation: any}) => {
           </View>
 
           <View style={styles.buttonContainer}>
-            <Button 
-              text={isSubmitting ? "Menyimpan..." : "Konfirmasi"} 
+            <Button
+              text={isSubmitting ? 'Menyimpan...' : 'Konfirmasi'}
               onPress={handleConfirmation}
               disabled={isSubmitting || loading}
             />
             {isSubmitting && (
-              <ActivityIndicator 
-                size="small" 
-                color="#0000ff" 
+              <ActivityIndicator
+                size="small"
+                color="#0000ff"
                 style={styles.submitLoader}
               />
             )}
