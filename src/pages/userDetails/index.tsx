@@ -1,8 +1,28 @@
 import { SafeAreaView, ScrollView, StyleSheet, Text, View, Image, TouchableOpacity, Linking, Platform, Alert } from 'react-native';
 import React from 'react';
 import { Button, ButtonNavAdmin, Header } from '../../components';
-// Import Firebase functions - adjust the import path based on your Firebase setup
-import { doc, updateDoc, getFirestore } from 'firebase/firestore';
+// Import Firebase Realtime Database functions - following Scan component pattern
+import { getDatabase, ref, update, get } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
+import app from '../../config/Firebase'; // Adjust path as needed
+
+// Move getAttendanceStatus function outside the component
+const getAttendanceStatus = (waktu) => {
+  if (!waktu) return 'Unexcused';
+  
+  const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
+  const timeInMinutes = hours * 60 + minutes;
+  const onTimeThreshold = 8 * 60; // 8:00 AM
+  const lateThreshold = 8 * 60 + 30; // 8:30 AM
+  
+  if (timeInMinutes <= onTimeThreshold) {
+    return 'Present';
+  } else if (timeInMinutes <= lateThreshold) {
+    return 'Late';
+  } else {
+    return 'Late';
+  }
+};
 
 // Updated UserDetailsCard component
 const UserDetailsCard = ({ userData }) => {
@@ -11,7 +31,7 @@ const UserDetailsCard = ({ userData }) => {
       <Text style={styles.title}>User's details</Text>
       <View style={styles.row}>
         <Text style={styles.label}>Name:</Text>
-        <Text style={styles.value}>{userData?.fullName || 'Unknown User'}</Text>
+        <Text style={styles.value}>{userData?.fullName || userData?.displayName || 'Unknown User'}</Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>NIP:</Text>
@@ -29,39 +49,11 @@ const UserDetailsCard = ({ userData }) => {
   );
 };
 
-// Updated ScanDetailsCard component
-const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, onMapPress }) => {
-  const [status, setStatus] = React.useState('Present');
+// Updated ScanDetailsCard component with improved status handling
+const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, currentStatus }) => {
   const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
 
   const statusOptions = ['Present', 'Late', 'Excused', 'Unexcused'];
-
-  // Update status based on attendance time when component mounts
-  React.useEffect(() => {
-    if (attendanceData?.status) {
-      setStatus(attendanceData.status);
-    } else if (attendanceData?.waktu) {
-      const calculatedStatus = getAttendanceStatus(attendanceData.waktu);
-      setStatus(calculatedStatus);
-    }
-  }, [attendanceData]);
-
-  const getAttendanceStatus = (waktu) => {
-    if (!waktu) return 'Unexcused';
-    
-    const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
-    const timeInMinutes = hours * 60 + minutes;
-    const onTimeThreshold = 8 * 60; // 8:00 AM
-    const lateThreshold = 8 * 60 + 30; // 8:30 AM
-    
-    if (timeInMinutes <= onTimeThreshold) {
-      return 'Present';
-    } else if (timeInMinutes <= lateThreshold) {
-      return 'Late';
-    } else {
-      return 'Late';
-    }
-  };
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -114,7 +106,6 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, onMapPress 
   };
 
   const handleStatusUpdate = (newStatus) => {
-    setStatus(newStatus);
     setShowStatusDropdown(false);
     if (onStatusUpdate) {
       onStatusUpdate(newStatus);
@@ -160,7 +151,7 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, onMapPress 
   const formatLocationDisplay = () => {
     if (!attendanceData?.location) return 'Not recorded';
     
-    const { placeName, address } = attendanceData.location;
+    const { placeName, address, fullAddress } = attendanceData.location;
     
     if (placeName && address) {
       return `${placeName}, ${address}`;
@@ -168,6 +159,8 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, onMapPress 
       return placeName;
     } else if (address) {
       return address;
+    } else if (fullAddress) {
+      return fullAddress;
     }
     
     return 'Location recorded';
@@ -199,7 +192,7 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, onMapPress 
               <TouchableOpacity
                 style={styles.dropdownContainer}
                 onPress={() => setShowStatusDropdown(!showStatusDropdown)}>
-                <Text style={styles.dropdownText}>{status}</Text>
+                <Text style={styles.dropdownText}>{currentStatus}</Text>
                 <Text style={styles.dropdownArrow}>▼</Text>
               </TouchableOpacity>
               
@@ -208,9 +201,17 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, onMapPress 
                   {statusOptions.map((option, index) => (
                     <TouchableOpacity
                       key={index}
-                      style={styles.dropdownOption}
+                      style={[
+                        styles.dropdownOption,
+                        index === statusOptions.length - 1 && { borderBottomWidth: 0 }
+                      ]}
                       onPress={() => handleStatusUpdate(option)}>
-                      <Text style={styles.dropdownOptionText}>{option}</Text>
+                      <Text style={[
+                        styles.dropdownOptionText,
+                        currentStatus === option && { fontFamily: 'Poppins-Bold', color: '#007AFF' }
+                      ]}>
+                        {option}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -237,16 +238,16 @@ const ScanDetailsCard = ({ attendanceData, userData, onStatusUpdate, onMapPress 
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.statusBadge, getStatusStyle(status).badge]}>
-        <Text style={[styles.statusText, getStatusStyle(status).text]}>
-          {status}
+      <View style={[styles.statusBadge, getStatusStyle(currentStatus).badge]}>
+        <Text style={[styles.statusText, getStatusStyle(currentStatus).text]}>
+          {currentStatus}
         </Text>
       </View>
     </View>
   );
 };
 
-// Main UserDetail component
+// Main UserDetail component with improved Firebase integration
 const UserDetail = ({ route, navigation }) => {
   const { 
     userId, 
@@ -256,64 +257,168 @@ const UserDetail = ({ route, navigation }) => {
     email, 
     attendanceData, 
     userData,
-    attendanceId // Make sure this is passed from the previous screen
+    attendanceId, 
+    attendanceKey 
   } = route.params || {};
 
-  const [currentStatus, setCurrentStatus] = React.useState(attendanceData?.status || 'Present');
+  // Initialize status based on attendance data or calculate from time
+  const getInitialStatus = () => {
+    // Check if attendanceData exists and has necessary properties
+    if (!attendanceData) {
+      console.warn('No attendance data provided');
+      return 'Present';
+    }
+
+    // First priority: use existing status from database
+    if (attendanceData.status) {
+      return attendanceData.status;
+    }
+    
+    // Second priority: calculate from time if available
+    if (attendanceData.waktu) {
+      try {
+        return getAttendanceStatus(attendanceData.waktu);
+      } catch (error) {
+        console.error('Error calculating status from time:', error);
+        return 'Present';
+      }
+    }
+    
+    // Default fallback
+    return 'Present';
+  };
+
+  const [currentStatus, setCurrentStatus] = React.useState(getInitialStatus());
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
 
-  const db = getFirestore();
+  // Get current admin user
+  const getCurrentUser = () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    return {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      phoneNumber: user.phoneNumber,
+    };
+  };
 
+  // Update attendance status in Firebase Realtime Database
   const updateAttendanceInFirebase = async (status, confirmed = false) => {
-    if (!attendanceId) {
+    const finalAttendanceKey = attendanceId || attendanceKey;
+    
+    if (!finalAttendanceKey) {
       Alert.alert('Error', 'Attendance ID not found. Cannot update record.');
+      return false;
+    }
+
+    const targetUserId = userData?.uid || userId;
+    if (!targetUserId) {
+      Alert.alert('Error', 'User ID not found. Cannot update record.');
       return false;
     }
 
     try {
       setIsUpdating(true);
       
-      const attendanceRef = doc(db, 'attendance', attendanceId); // Adjust collection name as needed
+      const database = getDatabase(app);
+      const currentUser = getCurrentUser();
+      
+      // Create reference to the specific attendance record
+      const attendanceRef = ref(database, `attendance/${targetUserId}/${finalAttendanceKey}`);
+      
+      // First, check if the record exists
+      const snapshot = await get(attendanceRef);
+      if (!snapshot.exists()) {
+        Alert.alert('Error', 'Attendance record not found in database.');
+        return false;
+      }
+
+      // Prepare update data
       const updateData = {
         status: status,
         lastModified: new Date().toISOString(),
-        modifiedBy: 'admin', // You might want to get this from user context
+        modifiedBy: currentUser.email || 'admin',
       };
 
       if (confirmed) {
         updateData.confirmed = true;
         updateData.confirmedAt = new Date().toISOString();
+        updateData.confirmedBy = currentUser.email || 'admin';
       }
 
-      await updateDoc(attendanceRef, updateData);
+      // Update the record in Firebase Realtime Database
+      await update(attendanceRef, updateData);
       
-      console.log('Attendance updated successfully:', { attendanceId, status, confirmed });
+      console.log('Attendance updated successfully:', { 
+        userId: targetUserId, 
+        attendanceKey: finalAttendanceKey, 
+        status, 
+        confirmed,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Reset unsaved changes flag after successful update
+      setHasUnsavedChanges(false);
+      
       return true;
     } catch (error) {
       console.error('Error updating attendance:', error);
-      Alert.alert('Update Failed', 'Failed to update attendance record. Please try again.');
+      
+      let errorMessage = 'Failed to update attendance record. Please try again.';
+      
+      if (error.message === 'User not authenticated') {
+        errorMessage = 'Admin user not authenticated. Please login again.';
+      } else if (error.code === 'PERMISSION_DENIED') {
+        errorMessage = 'Permission denied. You may not have access to update this record.';
+      } else if (error.code === 'NETWORK_ERROR') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      
+      Alert.alert('Update Failed', errorMessage);
       return false;
     } finally {
       setIsUpdating(false);
     }
   };
 
+  // Handle status change from dropdown
   const handleStatusUpdate = async (newStatus) => {
+    if (newStatus === currentStatus) {
+      return; // No change needed
+    }
+
     setCurrentStatus(newStatus);
+    setHasUnsavedChanges(true);
     
-    // Update in Firebase immediately when status changes
-    await updateAttendanceInFirebase(newStatus, false);
+    // Show immediate feedback
+    Alert.alert(
+      'Status Updated',
+      `Status changed to "${newStatus}". Don't forget to confirm to save changes.`,
+      [{ text: 'OK' }]
+    );
   };
 
+  // Handle confirm button press
   const handleConfirm = async () => {
     if (isUpdating) {
       Alert.alert('Please Wait', 'Update in progress...');
       return;
     }
 
+    const statusText = hasUnsavedChanges 
+      ? `confirm this attendance record with the new status "${currentStatus}"` 
+      : `confirm this attendance record with status "${currentStatus}"`;
+
     Alert.alert(
       'Confirm Attendance',
-      `Are you sure you want to confirm this attendance record with status "${currentStatus}"?`,
+      `Are you sure you want to ${statusText}?`,
       [
         {
           text: 'Cancel',
@@ -326,7 +431,7 @@ const UserDetail = ({ route, navigation }) => {
             if (success) {
               Alert.alert(
                 'Success',
-                'Attendance record has been confirmed successfully.',
+                'Attendance record has been confirmed and saved successfully.',
                 [
                   {
                     text: 'OK',
@@ -340,6 +445,55 @@ const UserDetail = ({ route, navigation }) => {
       ]
     );
   };
+
+  // Handle back button press with unsaved changes
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges) {
+        return; // No unsaved changes, allow navigation
+      }
+
+      // Prevent default behavior of leaving the screen
+      e.preventDefault();
+
+      // Prompt the user before leaving the screen
+      Alert.alert(
+        'Discard changes?',
+        'You have unsaved changes. Are you sure you want to discard them and leave?',
+        [
+          { text: "Don't leave", style: 'cancel', onPress: () => {} },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
+
+  // Add error boundary for rendering
+  if (!attendanceData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.contentWrapper}>
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+            <Header text="User Details"/>
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>No attendance data available</Text>
+              <Button 
+                text="Go Back" 
+                onPress={() => navigation.goBack()}
+              />
+            </View>
+          </ScrollView>
+          <ButtonNavAdmin navigation={navigation} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -380,14 +534,23 @@ const UserDetail = ({ route, navigation }) => {
               attendanceData={attendanceData} 
               userData={userData}
               onStatusUpdate={handleStatusUpdate}
+              currentStatus={currentStatus}
             />
           </View>
           
           <Button 
-            text={isUpdating ? "Updating..." : "Confirm"} 
+            text={isUpdating ? "Updating..." : hasUnsavedChanges ? "Confirm Changes" : "Confirm"} 
             onPress={handleConfirm}
             disabled={isUpdating}
           />
+
+          {hasUnsavedChanges && (
+            <View style={styles.warningContainer}>
+              <Text style={styles.warningText}>
+                ⚠️ You have unsaved changes. Confirm to save them.
+              </Text>
+            </View>
+          )}
         </ScrollView>
         <ButtonNavAdmin navigation={navigation} />
       </View>
@@ -431,6 +594,19 @@ const styles = StyleSheet.create({
     color: '#666',
     fontFamily: 'Poppins-Regular',
     textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'Poppins-Regular',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   // UserDetailsCard styles
   card: {
@@ -559,7 +735,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 5,
     zIndex: 1000,
   },
   dropdownOption: {
@@ -582,6 +758,21 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
+    fontFamily: 'Poppins-Medium',
+    textAlign: 'center',
+  },
+  warningContainer: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFEAA7',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    margin: 16,
+    marginTop: 8,
+  },
+  warningText: {
+    color: '#856404',
+    fontSize: 14,
     fontFamily: 'Poppins-Medium',
     textAlign: 'center',
   },
