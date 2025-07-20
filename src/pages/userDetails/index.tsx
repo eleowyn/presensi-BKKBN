@@ -157,14 +157,17 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
     
     const { placeName, address, fullAddress } = attendanceData.location;
     
-    if (placeName && address) {
-      return `${placeName}, ${address}`;
+    // Show location name first, then full address information
+    if (placeName && fullAddress) {
+      return `${placeName}\n${fullAddress}`;
+    } else if (placeName && address) {
+      return `${placeName}\n${address}`;
+    } else if (fullAddress) {
+      return fullAddress;
     } else if (placeName) {
       return placeName;
     } else if (address) {
       return address;
-    } else if (fullAddress) {
-      return fullAddress;
     }
     
     return 'Location recorded';
@@ -225,10 +228,19 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
 
           <View style={styles.row}>
             <Text style={styles.label}>Location:</Text>
-            <Text style={styles.locationValue} numberOfLines={2}>
+            <Text style={styles.locationValue} numberOfLines={3}>
               {formatLocationDisplay()}
             </Text>
           </View>
+
+          {attendanceData?.keterangan && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Note:</Text>
+              <Text style={styles.value} numberOfLines={3}>
+                {attendanceData.keterangan}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Clickable location/map image box */}

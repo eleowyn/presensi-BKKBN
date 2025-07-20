@@ -29,9 +29,12 @@ interface AttendanceData {
     address?: string;
     accuracy?: number;
     isHighAccuracy?: boolean;
+    placeName?: string;
+    fullAddress?: string;
   };
   timestamp?: number;
   attendanceKey?: string; // Add this to store the key
+  keterangan?: string; // Add keterangan field
 }
 
 interface AdminCardProps {
@@ -394,6 +397,27 @@ const AdminCard = ({userId, onPress}: AdminCardProps) => {
               <Text style={styles.label}>Time:</Text>
               <Text style={styles.value}>
                 {todayAttendance.waktu}
+              </Text>
+            </View>
+          )}
+
+          {todayAttendance?.location && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Location:</Text>
+              <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
+                {todayAttendance.location.placeName 
+                  ? `${todayAttendance.location.placeName}${todayAttendance.location.address ? `, ${todayAttendance.location.address}` : ''}`
+                  : todayAttendance.location.address || todayAttendance.location.fullAddress || 'Location recorded'
+                }
+              </Text>
+            </View>
+          )}
+
+          {todayAttendance?.keterangan && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Note:</Text>
+              <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
+                {todayAttendance.keterangan}
               </Text>
             </View>
           )}

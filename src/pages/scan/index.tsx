@@ -47,6 +47,7 @@ const Scan = ({navigation}: {navigation: any}) => {
     error: null,
     isHighAccuracy: false,
   });
+  const [keterangan, setKeterangan] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -492,6 +493,15 @@ const Scan = ({navigation}: {navigation: any}) => {
       return;
     }
 
+    if (!keterangan.trim()) {
+      showMessage({
+        message: 'Peringatan',
+        description: 'Harap isi keterangan terlebih dahulu',
+        type: 'warning',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -529,6 +539,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         },
         tanggal,
         waktu,
+        keterangan: keterangan.trim(), // Add keterangan field
         status: attendanceStatus, // Add attendance status based on time
         timestamp: Date.now(), // Add timestamp for sorting
         createdAt: new Date().toISOString(), // Human readable timestamp
@@ -689,6 +700,20 @@ const Scan = ({navigation}: {navigation: any}) => {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+
+          <View style={styles.keteranganSection}>
+            <Text style={styles.sectionLabel}>Keterangan *</Text>
+            <RNTextInput
+              value={keterangan}
+              onChangeText={setKeterangan}
+              style={styles.keteranganInput}
+              placeholder="Masukkan keterangan absensi (wajib diisi)"
+              placeholderTextColor="#999"
+              multiline={true}
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
           </View>
 
           <View style={styles.buttonContainer}>
@@ -856,6 +881,19 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  keteranganSection: {
+    marginTop: 20,
+  },
+  keteranganInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 12,
+    backgroundColor: '#fff',
+    minHeight: 100,
+    fontSize: 14,
+    marginTop: 5,
   },
 });
 
