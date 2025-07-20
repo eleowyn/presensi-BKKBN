@@ -14,16 +14,20 @@ import {
   TextTitle,
   TextSubtitle,
 } from '../../components/atoms';
-import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
+import {
+  getAuth,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from 'firebase/auth'; // Perbaikan di sini
 import {showMessage} from 'react-native-flash-message';
 import {isAdminEmail} from '../../utils/adminUtils';
-//making login
 
 const SignIn = ({navigation}: {navigation: any}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -48,27 +52,14 @@ const SignIn = ({navigation}: {navigation: any}) => {
         duration: 3000,
       });
 
-      // Check if the logged-in user is admin
-      console.log('Login email:', email);
-      console.log('Admin check result:', isAdminEmail(email));
-      console.log(
-        'Direct comparison:',
-        email.toLowerCase() === 'bkkbnsulutadmin@gmail.com',
-      );
-
       if (isAdminEmail(email)) {
-        // Admin user - redirect to Dashboard (admin page)
-        console.log('Redirecting to Dashboard');
         navigation.replace('Dashboard');
       } else {
-        // Regular user - redirect to Home
-        console.log('Redirecting to Home');
         navigation.replace('Home');
       }
     } catch (error: any) {
       let errorMessage = 'Login gagal. Silakan coba lagi.';
 
-      // Handle error spesifik dari Firebase
       switch (error.code) {
         case 'auth/invalid-email':
           errorMessage = 'Format email tidak valid';
@@ -100,9 +91,53 @@ const SignIn = ({navigation}: {navigation: any}) => {
     }
   };
 
-  const handleResetPassword = () => {
-    // Implementasi reset password bisa ditambahkan di sini
-    navigation.navigate('ResetPassword');
+  const handleResetPassword = async () => {
+    if (!email) {
+      showMessage({
+        message: 'Email diperlukan',
+        description: 'Silakan masukkan email Anda untuk reset password',
+        type: 'warning',
+        duration: 3000,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const auth = getAuth();
+      await sendPasswordResetEmail(auth, email);
+
+      setResetEmailSent(true);
+      showMessage({
+        message: 'Email reset password terkirim',
+        description: 'Silakan cek email Anda untuk instruksi reset password',
+        type: 'success',
+        duration: 5000,
+      });
+    } catch (error: any) {
+      let errorMessage = 'Gagal mengirim email reset. Silakan coba lagi.';
+
+      switch (error.code) {
+        case 'auth/invalid-email':
+          errorMessage = 'Format email tidak valid';
+          break;
+        case 'auth/user-not-found':
+          errorMessage = 'Akun tidak ditemukan';
+          break;
+        default:
+          errorMessage = 'Terjadi kesalahan. Silakan coba lagi';
+      }
+
+      showMessage({
+        message: 'Error Reset Password',
+        description: errorMessage,
+        type: 'danger',
+        duration: 4000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -136,10 +171,24 @@ const SignIn = ({navigation}: {navigation: any}) => {
               <Text style={styles.terms}>Remember Me</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleResetPassword}>
-              <Text style={styles.resetpassword}>Reset Password?</Text>
+            <TouchableOpacity
+              onPress={handleResetPassword}
+              disabled={isLoading}>
+              <Text
+                style={[
+                  styles.resetpassword,
+                  isLoading && styles.disabledText,
+                ]}>
+                Reset Password?
+              </Text>
             </TouchableOpacity>
           </View>
+
+          {resetEmailSent && (
+            <Text style={styles.resetSuccess}>
+              Email reset password telah dikirim ke {email}
+            </Text>
+          )}
 
           <Button
             text={isLoading ? 'Processing...' : 'Log In'}
@@ -180,6 +229,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textDecorationLine: 'underline',
   },
+  disabledText: {
+    color: '#CCCCCC', // Warna lebih terang saat disabled
+  },
+  resetSuccess: {
+    color: 'green',
+    fontFamily: 'Poppins-Medium',
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
   title: {
     fontFamily: 'Poppins-Regular',
     fontSize: 24,
@@ -188,7 +247,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginTop: 60,
-
     paddingHorizontal: 20,
   },
   terms: {
