@@ -237,10 +237,18 @@ const Lists = ({ navigation }) => {
   );
 };
 
-// Custom AttendanceCard component for displaying attendance records
+// Updated AttendanceCard component with improved status handling (matching DashboardAdmin)
 const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
-  const getAttendanceStatus = (waktu) => {
-    if (!waktu) return 'Absent';
+  // Updated getAttendanceStatus to prioritize Firebase status field (same as DashboardAdmin)
+  const getAttendanceStatus = (record) => {
+    // First, check if there's a status field in the record (from Firebase)
+    if (record.status) {
+      return record.status;
+    }
+    
+    // Fallback to time-based calculation if no status field exists
+    const waktu = record.waktu;
+    if (!waktu) return 'Unexcused';
     
     const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
     const timeInMinutes = hours * 60 + minutes;
@@ -256,6 +264,7 @@ const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
     }
   };
 
+  // Updated getStatusStyle to handle all status types (same as DashboardAdmin)
   const getStatusStyle = (status) => {
     switch (status) {
       case 'Present':
@@ -268,15 +277,26 @@ const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
           badge: {backgroundColor: '#FFF3B1'},
           text: {color: '#8A6E00'},
         };
-      default:
+      case 'Excused':
+        return {
+          badge: {backgroundColor: '#B1D6FF'},
+          text: {color: '#004E8A'},
+        };
+      case 'Unexcused':
         return {
           badge: {backgroundColor: '#FFB1B1'},
           text: {color: '#8A0000'},
         };
+      default:
+        return {
+          badge: {backgroundColor: '#CCCCCC'},
+          text: {color: '#333333'},
+        };
     }
   };
 
-  const status = getAttendanceStatus(attendanceRecord.waktu);
+  // Use the updated function that checks Firebase status first
+  const status = getAttendanceStatus(attendanceRecord);
   const statusStyle = getStatusStyle(status);
 
   return (
@@ -325,9 +345,19 @@ const AttendanceCard = ({attendanceRecord, userData, onPress}) => {
               </Text>
             </View>
           )}
+
+          {/* Show confirmation status if available */}
+          {attendanceRecord.confirmed && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Confirmed:</Text>
+              <Text style={[styles.value, {color: '#2B6000', fontFamily: 'Poppins-SemiBold'}]}>
+                ✓ Yes
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Attendance Photo Section */}
+        {/* Attendance Photo Section - Updated to use attendance photo instead of profile photo */}
         <View style={styles.imageBox}>
           {attendanceRecord.photo ? (
             <Image
