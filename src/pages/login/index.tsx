@@ -8,10 +8,16 @@ import {
 import React, {useState} from 'react';
 import Logo from '../../assets/Logo_Kementerian_Kependudukan_dan_Pembangunan_Keluarga_-_BKKBN_(2024)_.svg';
 import Checkbox from '../../assets/Checkbox Field.svg';
-import {Button, TextInput, TextTitle} from '../../components';
+import {
+  Button,
+  TextInput,
+  TextTitle,
+  TextSubtitle,
+} from '../../components/atoms';
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import {showMessage} from 'react-native-flash-message';
 import {isAdminEmail} from '../../utils/adminUtils';
+//making login
 
 const SignIn = ({navigation}: {navigation: any}) => {
   const [email, setEmail] = useState('');
@@ -45,8 +51,11 @@ const SignIn = ({navigation}: {navigation: any}) => {
       // Check if the logged-in user is admin
       console.log('Login email:', email);
       console.log('Admin check result:', isAdminEmail(email));
-      console.log('Direct comparison:', email.toLowerCase() === 'bkkbnsulutadmin@gmail.com');
-      
+      console.log(
+        'Direct comparison:',
+        email.toLowerCase() === 'bkkbnsulutadmin@gmail.com',
+      );
+
       if (isAdminEmail(email)) {
         // Admin user - redirect to Dashboard (admin page)
         console.log('Redirecting to Dashboard');
