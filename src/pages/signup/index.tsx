@@ -90,7 +90,7 @@ const SignUp = ({navigation}) => {
         fullName,
         email,
       });
-      
+
       await set(ref(db, `users/${userCredential.user.uid}`), userProfileData);
 
       // Tampilkan pesan sukses
@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
     fontSize: 11,
     marginLeft: 5,
+    color: '#0066CC',
   },
   dropdownButton: {
     flexDirection: 'row',
