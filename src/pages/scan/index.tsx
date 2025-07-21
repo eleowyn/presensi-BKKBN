@@ -70,28 +70,79 @@ const Scan = ({navigation}: {navigation: any}) => {
 
   // Function to determine attendance status based on time
   const getAttendanceStatus = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':').map(Number);
+    console.log('🕐 Original time string received:', timeString);
+    
+    // Try to extract time using multiple methods
+    let hours = 0;
+    let minutes = 0;
+    
+    // Method 1: Direct split by colon OR dot (Indonesian format uses dots)
+    if (timeString.includes(':') || timeString.includes('.')) {
+      const separator = timeString.includes(':') ? ':' : '.';
+      const parts = timeString.split(separator);
+      const hourStr = parts[0].replace(/\D/g, ''); // Remove non-digits
+      const minuteStr = parts[1].replace(/\D/g, ''); // Remove non-digits
+      
+      hours = parseInt(hourStr, 10);
+      minutes = parseInt(minuteStr, 10);
+      
+      console.log('📊 Method 1 - Split by', separator + ':');
+      console.log('   Hour string:', hourStr, '-> parsed:', hours);
+      console.log('   Minute string:', minuteStr, '-> parsed:', minutes);
+    }
+    
+    // Method 2: If parsing failed, try regex
+    if (isNaN(hours) || isNaN(minutes)) {
+      const timeMatch = timeString.match(/(\d{1,2})[:.]\s*(\d{2})/);
+      if (timeMatch) {
+        hours = parseInt(timeMatch[1], 10);
+        minutes = parseInt(timeMatch[2], 10);
+        console.log('📊 Method 2 - Regex match:', timeMatch);
+        console.log('   Parsed hours:', hours, 'minutes:', minutes);
+      }
+    }
+    
+    // Final validation
+    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      console.log('❌ Invalid time values - hours:', hours, 'minutes:', minutes);
+      console.log('   Defaulting to Unexcused');
+      return 'Unexcused';
+    }
+    
     const totalMinutes = hours * 60 + minutes;
+    
+    console.log('✅ Final parsed values:');
+    console.log('   Hours:', hours, 'Minutes:', minutes);
+    console.log('   Total minutes:', totalMinutes);
+    console.log('   Time in 24h format:', `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
 
     // Convert time ranges to minutes
-    const presentStart = 8 * 60; // 08:00
-    const presentEnd = 8 * 60 + 30; // 08:30
-    const unexcusedStart = 17 * 60; // 17:00
-    const unexcusedEnd = 7 * 60 + 59; // 07:59 (next day, but we'll handle as same day for simplicity)
+    const presentStart = 6 * 60; // 06:00 AM (360 minutes)
+    const presentEnd = 8 * 60; // 08:00 AM (480 minutes) - INCLUSIVE
+    const lateStart = 8 * 60 + 1; // 08:01 AM (481 minutes)
+    const lateEnd = 12 * 60; // 12:00 PM (720 minutes)
 
-    // Check for Present (8:00 - 8:30 AM)
+    console.log('📋 Time classification ranges:');
+    console.log('   🟢 Present: 06:00 (360 min) to 08:00 (480 min)');
+    console.log('   🟡 Late: 08:01 (481 min) to 12:00 (720 min)');
+    console.log('   🔴 Unexcused: before 06:00 or after 12:00');
+    console.log('   📍 Current time: ' + totalMinutes + ' minutes');
+
+    // Check for Present (6:00 AM - 8:00 AM INCLUSIVE)
     if (totalMinutes >= presentStart && totalMinutes <= presentEnd) {
+      console.log('🎉 RESULT: Present (within 6:00-8:00 range)');
       return 'Present';
     }
 
-    // Check for Unexcused (17:00 - 07:59)
-    // This handles both evening (17:00-23:59) and early morning (00:00-07:59)
-    if (totalMinutes >= unexcusedStart || totalMinutes <= unexcusedEnd) {
-      return 'Unexcused';
+    // Check for Late (8:01 AM - 12:00 PM)
+    if (totalMinutes >= lateStart && totalMinutes <= lateEnd) {
+      console.log('⚠️ RESULT: Late (within 8:01-12:00 range)');
+      return 'Late';
     }
 
-    // Everything else is Late
-    return 'Late';
+    // Everything else is Unexcused (after 12:00 PM or before 6:00 AM)
+    console.log('❌ RESULT: Unexcused (outside all valid ranges)');
+    return 'Unexcused';
   };
 
   // Multiple geocoding services for better accuracy and place names
