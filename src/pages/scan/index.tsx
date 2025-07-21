@@ -490,14 +490,6 @@ const Scan = ({navigation}: {navigation: any}) => {
       return;
     }
 
-    if (!keterangan.trim()) {
-      showMessage({
-        message: 'Peringatan',
-        description: 'Harap isi keterangan terlebih dahulu',
-        type: 'warning',
-      });
-      return;
-    }
 
     setIsSubmitting(true);
 
@@ -700,12 +692,12 @@ const Scan = ({navigation}: {navigation: any}) => {
           </View>
 
           <View style={styles.keteranganSection}>
-            <Text style={styles.sectionLabel}>Keterangan *</Text>
+            <Text style={styles.sectionLabel}>Keterangan</Text>
             <RNTextInput
               value={keterangan}
               onChangeText={setKeterangan}
               style={styles.keteranganInput}
-              placeholder="Masukkan keterangan absensi (wajib diisi)"
+              placeholder="Masukkan keterangan absensi (opsional)"
               placeholderTextColor="#999"
               multiline={true}
               numberOfLines={4}
