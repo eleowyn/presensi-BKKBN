@@ -8,7 +8,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
-import {Button, Buttonnavigation, Header, ProfileCard, ProfilePicture} from '../../components';
+import {
+  Button,
+  Buttonnavigation,
+  Header,
+  ProfileCard,
+  ProfilePicture,
+} from '../../components';
 import {getAuth, signOut} from 'firebase/auth';
 import {getDatabase, ref, onValue, off} from 'firebase/database';
 import {showMessage} from 'react-native-flash-message';
@@ -51,24 +57,24 @@ const Account = ({navigation}: {navigation: any}) => {
         // Set up real-time listener
         const listener = onValue(
           userRef,
-          (snapshot) => {
+          snapshot => {
             console.log('Snapshot received:', snapshot.exists());
-            
+
             if (snapshot.exists()) {
               const data = snapshot.val();
               console.log('User data:', data);
-              
+
               setUserData(data);
-              
+
               // Set profile image if available
               if (data.profilePictureBase64) {
                 setProfileImage(data.profilePictureBase64);
               }
-              
+
               setError(null);
             } else {
               console.log('No user data found, using auth data as fallback');
-              
+
               // If no user data in database, create basic profile from auth
               const fallbackData: UserData = {
                 fullName: user.displayName || 'Unknown User',
@@ -77,39 +83,40 @@ const Account = ({navigation}: {navigation: any}) => {
                 NIP: 'Not specified',
                 startDate: new Date().toISOString(),
               };
-              
+
               setUserData(fallbackData);
               setError('Profile data not found. Please complete your profile.');
             }
-            
+
             setLoading(false);
           },
-          (error) => {
+          error => {
             console.error('Firebase error:', error);
-            
+
             let errorMessage = 'Failed to load user data';
-            
+
             if (error.code === 'PERMISSION_DENIED') {
-              errorMessage = 'Permission denied. Please check your Firebase security rules.';
+              errorMessage =
+                'Permission denied. Please check your Firebase security rules.';
             } else if (error.code === 'NETWORK_ERROR') {
-              errorMessage = 'Network error. Please check your internet connection.';
+              errorMessage =
+                'Network error. Please check your internet connection.';
             }
-            
+
             setError(errorMessage);
             setLoading(false);
-            
+
             showMessage({
               message: 'Database Error',
               description: errorMessage,
               type: 'danger',
               duration: 5000,
             });
-          }
+          },
         );
 
         // Store the unsubscribe function
         unsubscribe = () => off(userRef, 'value', listener);
-
       } catch (error) {
         console.error('Setup error:', error);
         setError('Failed to initialize user data');
@@ -134,43 +141,42 @@ const Account = ({navigation}: {navigation: any}) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const auth = getAuth();
+            await signOut(auth);
+
+            showMessage({
+              message: 'Logged Out',
+              description: 'You have been successfully logged out',
+              type: 'success',
+              duration: 2000,
+            });
+
+            console.log(
+              `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+            );
+            navigation.replace('Login');
+          } catch (error) {
+            console.error('Logout error:', error);
+            showMessage({
+              message: 'Logout Error',
+              description: 'Failed to logout. Please try again.',
+              type: 'danger',
+              duration: 3000,
+            });
+          }
         },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const auth = getAuth();
-              await signOut(auth);
-              
-              showMessage({
-                message: 'Logged Out',
-                description: 'You have been successfully logged out',
-                type: 'success',
-                duration: 2000,
-              });
-              
-              navigation.replace('Login');
-            } catch (error) {
-              console.error('Logout error:', error);
-              showMessage({
-                message: 'Logout Error',
-                description: 'Failed to logout. Please try again.',
-                type: 'danger',
-                duration: 3000,
-              });
-            }
-          },
-        },
-      ],
-    );
+      },
+    ]);
   };
 
   const handleRetry = () => {
@@ -199,6 +205,7 @@ const Account = ({navigation}: {navigation: any}) => {
           <Text style={styles.errorText}>{error}</Text>
           <Button text="Retry" onPress={handleRetry} />
           <Button text="Logout" onPress={handleLogout} />
+          {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
         </View>
       </SafeAreaView>
     );
@@ -211,13 +218,13 @@ const Account = ({navigation}: {navigation: any}) => {
           <View>
             <Header text="Account" />
           </View>
-          
+
           {error && (
             <View style={styles.warningContainer}>
               <Text style={styles.warningText}>{error}</Text>
             </View>
           )}
-          
+
           <View style={styles.profile}>
             <ProfilePicture
               currentImage={profileImage}
@@ -233,19 +240,19 @@ const Account = ({navigation}: {navigation: any}) => {
               </Text>
             </View>
           </View>
-          
+
           <View style={styles.card}>
-            <ProfileCard 
-              text="Department" 
-              placeholder={userData?.department || 'Not specified'} 
+            <ProfileCard
+              text="Department"
+              placeholder={userData?.department || 'Not specified'}
             />
-            <ProfileCard 
-              text="NIP" 
-              placeholder={userData?.NIP || 'Not specified'} 
+            <ProfileCard
+              text="NIP"
+              placeholder={userData?.NIP || 'Not specified'}
             />
-            <ProfileCard 
-              text="Start Date" 
-              placeholder={formatDate(userData?.startDate || '')} 
+            <ProfileCard
+              text="Start Date"
+              placeholder={formatDate(userData?.startDate || '')}
             />
           </View>
         </View>

@@ -148,6 +148,7 @@ const Card = () => {
       };
     } catch (error) {
       console.error('Error setting up Firebase listener:', error);
+
       setLoading(false);
       setRefreshing(false);
       return null;
@@ -168,6 +169,9 @@ const Card = () => {
     return () => {
       if (cleanup && typeof cleanup === 'function') {
         try {
+          console.log(
+            `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+          );
           cleanup();
         } catch (error) {
           console.error('Error during cleanup:', error);
@@ -219,6 +223,10 @@ const Card = () => {
   };
 
   // Handle card press to show more details
+
+  {
+    /* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */
+  }
   const handleCardPress = (item: AttendanceItem) => {
     try {
       Alert.alert(

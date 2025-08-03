@@ -51,16 +51,18 @@ const Dashboard = ({navigation}: {navigation: any}) => {
 
         const listener = onValue(
           usersRef,
-          (snapshot) => {
+          snapshot => {
             if (snapshot.exists()) {
               const usersData = snapshot.val();
               const usersList: UserWithId[] = Object.keys(usersData)
                 .map(userId => ({
                   id: userId,
-                  ...usersData[userId]
+                  ...usersData[userId],
                 }))
                 // Filter out admin users or current user if needed
-                .filter(user => user.role !== 'admin' || user.id !== currentUser?.uid)
+                .filter(
+                  user => user.role !== 'admin' || user.id !== currentUser?.uid,
+                )
                 .sort((a, b) => {
                   // Sort by name, putting users with names first
                   const nameA = a.fullName || '';
@@ -71,22 +73,26 @@ const Dashboard = ({navigation}: {navigation: any}) => {
               setUsers(usersList);
               setFilteredUsers(usersList);
               setError(null);
+              console.log(
+                `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+              );
             } else {
               setUsers([]);
               setFilteredUsers([]);
               setError('No users found');
             }
-            
+
             setLoading(false);
             setRefreshing(false);
           },
           (error: any) => {
             console.error('Firebase users fetch error:', error);
-            
+
             let errorMessage = 'Failed to load users';
-            
+
             if (error?.code === 'PERMISSION_DENIED') {
-              errorMessage = 'Permission denied. Check Firebase security rules.';
+              errorMessage =
+                'Permission denied. Check Firebase security rules.';
             } else if (error?.code === 'NETWORK_ERROR') {
               errorMessage = 'Network error. Please check your connection.';
             }
@@ -101,7 +107,7 @@ const Dashboard = ({navigation}: {navigation: any}) => {
               type: 'danger',
               duration: 5000,
             });
-          }
+          },
         );
 
         unsubscribe = () => off(usersRef, 'value', listener);
@@ -150,39 +156,35 @@ const Dashboard = ({navigation}: {navigation: any}) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            showMessage({
+              message: 'Logged out successfully',
+              type: 'success',
+              duration: 2000,
+            });
+            // Navigation will be handled automatically by auth state change
+          } catch (error) {
+            console.error('Logout error:', error);
+            showMessage({
+              message: 'Logout failed',
+              description: 'Please try again',
+              type: 'danger',
+              duration: 3000,
+            });
+          }
         },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut(auth);
-              showMessage({
-                message: 'Logged out successfully',
-                type: 'success',
-                duration: 2000,
-              });
-              // Navigation will be handled automatically by auth state change
-            } catch (error) {
-              console.error('Logout error:', error);
-              showMessage({
-                message: 'Logout failed',
-                description: 'Please try again',
-                type: 'danger',
-                duration: 3000,
-              });
-            }
-          },
-        },
-      ],
-    );
+      },
+    ]);
   };
 
   const renderUserCard = ({item}: {item: UserWithId}) => (
@@ -206,10 +208,9 @@ const Dashboard = ({navigation}: {navigation: any}) => {
         {searchQuery ? 'No users found' : 'No users available'}
       </Text>
       <Text style={styles.emptySubtitle}>
-        {searchQuery 
+        {searchQuery
           ? 'Try adjusting your search criteria'
-          : 'Users will appear here once they register'
-        }
+          : 'Users will appear here once they register'}
       </Text>
       {searchQuery && (
         <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
@@ -230,10 +231,11 @@ const Dashboard = ({navigation}: {navigation: any}) => {
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
-      
+
       {currentUser?.email && (
         <Text style={styles.info}>
           Logged in as: {currentUser.email}
+          {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
         </Text>
       )}
 
@@ -257,7 +259,9 @@ const Dashboard = ({navigation}: {navigation: any}) => {
           placeholderTextColor="#999"
         />
         {searchQuery ? (
-          <TouchableOpacity onPress={clearSearch} style={styles.clearSearchButton}>
+          <TouchableOpacity
+            onPress={clearSearch}
+            style={styles.clearSearchButton}>
             <Text style={styles.clearSearchText}>✕</Text>
           </TouchableOpacity>
         ) : null}
@@ -295,7 +299,7 @@ const Dashboard = ({navigation}: {navigation: any}) => {
       <FlatList
         data={filteredUsers}
         renderItem={renderUserCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmptyState}
         refreshControl={

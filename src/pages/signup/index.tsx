@@ -101,6 +101,9 @@ const SignUp = ({navigation}) => {
         icon: 'none',
         duration: 3000,
       });
+      console.log(
+        `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+      );
 
       // 3. Navigasi ke halaman Dashboard setelah sukses
       navigation.replace('Login');
@@ -178,6 +181,7 @@ const SignUp = ({navigation}) => {
             onChangeText={setNIP}
             keyboardType="numeric"
           />
+          {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
           <TextTitle text="Your Email Address" />
           <TextInput
             placeholder="Email Address"

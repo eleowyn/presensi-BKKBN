@@ -1,20 +1,31 @@
-import { SafeAreaView, ScrollView, StyleSheet, Text, View, Image, TouchableOpacity, Linking, Platform, Alert } from 'react-native';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
+  Linking,
+  Platform,
+  Alert,
+} from 'react-native';
 import React from 'react';
-import { Button, ButtonNavAdmin, Header } from '../../components';
+import {Button, ButtonNavAdmin, Header} from '../../components';
 // Import Firebase Realtime Database functions - following Scan component pattern
-import { getDatabase, ref, update, get } from 'firebase/database';
-import { getAuth } from 'firebase/auth';
+import {getDatabase, ref, update, get} from 'firebase/database';
+import {getAuth} from 'firebase/auth';
 import app from '../../config/Firebase'; // Adjust path as needed
 
 // Move getAttendanceStatus function outside the component
 const getAttendanceStatus = (waktu: string): string => {
   if (!waktu) return 'Unexcused';
-  
+
   const [hours, minutes] = waktu.split(':').map((num: string) => parseInt(num));
   const timeInMinutes = hours * 60 + minutes;
   const onTimeThreshold = 8 * 60; // 8:00 AM
   const lateThreshold = 8 * 60 + 30; // 8:30 AM
-  
+
   if (timeInMinutes <= onTimeThreshold) {
     return 'Present';
   } else if (timeInMinutes <= lateThreshold) {
@@ -25,13 +36,15 @@ const getAttendanceStatus = (waktu: string): string => {
 };
 
 // Updated UserDetailsCard component
-const UserDetailsCard = ({ userData }: { userData: any }) => {
+const UserDetailsCard = ({userData}: {userData: any}) => {
   return (
     <View style={styles.card}>
       <Text style={styles.title}>User's details</Text>
       <View style={styles.row}>
         <Text style={styles.label}>Name:</Text>
-        <Text style={styles.value}>{userData?.fullName || userData?.displayName || 'Unknown User'}</Text>
+        <Text style={styles.value}>
+          {userData?.fullName || userData?.displayName || 'Unknown User'}
+        </Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>NIP:</Text>
@@ -39,7 +52,9 @@ const UserDetailsCard = ({ userData }: { userData: any }) => {
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>Department:</Text>
-        <Text style={styles.value}>{userData?.department || 'Not specified'}</Text>
+        <Text style={styles.value}>
+          {userData?.department || 'Not specified'}
+        </Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>Email:</Text>
@@ -50,10 +65,14 @@ const UserDetailsCard = ({ userData }: { userData: any }) => {
 };
 
 // Updated ScanDetailsCard component with improved status handling
-const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: { 
-  attendanceData: any; 
-  onStatusUpdate: (status: string) => void; 
-  currentStatus: string; 
+const ScanDetailsCard = ({
+  attendanceData,
+  onStatusUpdate,
+  currentStatus,
+}: {
+  attendanceData: any;
+  onStatusUpdate: (status: string) => void;
+  currentStatus: string;
 }) => {
   const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
 
@@ -63,28 +82,28 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
     switch (status) {
       case 'Present':
         return {
-          badge: { backgroundColor: '#B4FFB1' },
-          text: { color: '#2B6000' },
+          badge: {backgroundColor: '#B4FFB1'},
+          text: {color: '#2B6000'},
         };
       case 'Late':
         return {
-          badge: { backgroundColor: '#FFF3B1' },
-          text: { color: '#8A6E00' },
+          badge: {backgroundColor: '#FFF3B1'},
+          text: {color: '#8A6E00'},
         };
       case 'Excused':
         return {
-          badge: { backgroundColor: '#B1D6FF' },
-          text: { color: '#004E8A' },
+          badge: {backgroundColor: '#B1D6FF'},
+          text: {color: '#004E8A'},
         };
       case 'Unexcused':
         return {
-          badge: { backgroundColor: '#FFB1B1' },
-          text: { color: '#8A0000' },
+          badge: {backgroundColor: '#FFB1B1'},
+          text: {color: '#8A0000'},
         };
       default:
         return {
-          badge: { backgroundColor: '#CCCCCC' },
-          text: { color: '#333333' },
+          badge: {backgroundColor: '#CCCCCC'},
+          text: {color: '#333333'},
         };
     }
   };
@@ -95,7 +114,7 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
     return date.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -117,27 +136,38 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
   };
 
   const openMaps = () => {
-    if (!attendanceData?.location?.latitude || !attendanceData?.location?.longitude) {
-      Alert.alert('Location Not Available', 'No location coordinates found for this attendance record.');
+    if (
+      !attendanceData?.location?.latitude ||
+      !attendanceData?.location?.longitude
+    ) {
+      Alert.alert(
+        'Location Not Available',
+        'No location coordinates found for this attendance record.',
+      );
       return;
     }
 
-    const { latitude, longitude } = attendanceData.location;
-    const label = attendanceData.location.placeName || attendanceData.location.address || 'Attendance Location';
-    
-    const scheme = Platform.select({ 
-      ios: 'maps:0,0?q=', 
-      android: 'geo:0,0?q=' 
-    }) || 'geo:0,0?q=';
+    const {latitude, longitude} = attendanceData.location;
+    const label =
+      attendanceData.location.placeName ||
+      attendanceData.location.address ||
+      'Attendance Location';
+
+    const scheme =
+      Platform.select({
+        ios: 'maps:0,0?q=',
+        android: 'geo:0,0?q=',
+      }) || 'geo:0,0?q=';
     const latLng = `${latitude},${longitude}`;
-    const url = Platform.select({
-      ios: `${scheme}${label}@${latLng}`,
-      android: `${scheme}${latLng}(${label})`
-    }) || `${scheme}${latLng}(${label})`;
+    const url =
+      Platform.select({
+        ios: `${scheme}${label}@${latLng}`,
+        android: `${scheme}${latLng}(${label})`,
+      }) || `${scheme}${latLng}(${label})`;
 
     // Try to open native maps first, fallback to Google Maps web
     Linking.canOpenURL(url)
-      .then((supported) => {
+      .then(supported => {
         if (supported) {
           return Linking.openURL(url);
         } else {
@@ -146,7 +176,7 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
           return Linking.openURL(googleMapsUrl);
         }
       })
-      .catch((err) => {
+      .catch(err => {
         console.error('Failed to open maps:', err);
         Alert.alert('Error', 'Unable to open maps application.');
       });
@@ -154,9 +184,9 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
 
   const formatLocationDisplay = () => {
     if (!attendanceData?.location) return 'Not recorded';
-    
-    const { placeName, address, fullAddress } = attendanceData.location;
-    
+
+    const {placeName, address, fullAddress} = attendanceData.location;
+
     // Show location name first, then full address information
     if (placeName && fullAddress) {
       return `${placeName}\n${fullAddress}`;
@@ -169,7 +199,7 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
     } else if (address) {
       return address;
     }
-    
+
     return 'Location recorded';
   };
 
@@ -182,7 +212,8 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
           <View style={styles.row}>
             <Text style={styles.label}>Date:</Text>
             <Text style={styles.value}>
-              {attendanceData?.tanggal || formatDate(attendanceData?.timestamp || 0)}
+              {attendanceData?.tanggal ||
+                formatDate(attendanceData?.timestamp || 0)}
             </Text>
           </View>
 
@@ -202,7 +233,7 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
                 <Text style={styles.dropdownText}>{currentStatus}</Text>
                 <Text style={styles.dropdownArrow}>▼</Text>
               </TouchableOpacity>
-              
+
               {showStatusDropdown && (
                 <View style={styles.dropdownOptions}>
                   {statusOptions.map((option, index) => (
@@ -210,13 +241,19 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
                       key={index}
                       style={[
                         styles.dropdownOption,
-                        index === statusOptions.length - 1 && { borderBottomWidth: 0 }
+                        index === statusOptions.length - 1 && {
+                          borderBottomWidth: 0,
+                        },
                       ]}
                       onPress={() => handleStatusUpdate(option)}>
-                      <Text style={[
-                        styles.dropdownOptionText,
-                        currentStatus === option && { fontFamily: 'Poppins-Bold', color: '#007AFF' }
-                      ]}>
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          currentStatus === option && {
+                            fontFamily: 'Poppins-Bold',
+                            color: '#007AFF',
+                          },
+                        ]}>
                         {option}
                       </Text>
                     </TouchableOpacity>
@@ -244,11 +281,10 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
         </View>
 
         {/* Clickable location/map image box */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.smallImageBox}
           onPress={openMaps}
-          activeOpacity={0.7}
-        >
+          activeOpacity={0.7}>
           <Text style={styles.mapIcon}>📍</Text>
           <Text style={styles.placeholderText}>Open Map</Text>
         </TouchableOpacity>
@@ -264,17 +300,17 @@ const ScanDetailsCard = ({ attendanceData, onStatusUpdate, currentStatus }: {
 };
 
 // Main UserDetail component with improved Firebase integration
-const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
-  const { 
-    userId, 
-    name, 
-    nip, 
-    department, 
-    email, 
-    attendanceData, 
+const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
+  const {
+    userId,
+    name,
+    nip,
+    department,
+    email,
+    attendanceData,
     userData,
-    attendanceId, 
-    attendanceKey 
+    attendanceId,
+    attendanceKey,
   } = route.params || {};
 
   // Initialize status based on attendance data or calculate from time
@@ -289,7 +325,7 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
     if (attendanceData.status) {
       return attendanceData.status;
     }
-    
+
     // Second priority: calculate from time if available
     if (attendanceData.waktu) {
       try {
@@ -299,7 +335,7 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
         return 'Present';
       }
     }
-    
+
     // Default fallback
     return 'Present';
   };
@@ -312,11 +348,11 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
   const getCurrentUser = () => {
     const auth = getAuth();
     const user = auth.currentUser;
-    
+
     if (!user) {
       throw new Error('User not authenticated');
     }
-    
+
     return {
       uid: user.uid,
       email: user.email,
@@ -326,33 +362,37 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
   };
 
   // Find the correct attendance key by searching through all attendance records
-  const findAttendanceKey = async (targetUserId: string, attendanceData: any): Promise<string | null> => {
+  const findAttendanceKey = async (
+    targetUserId: string,
+    attendanceData: any,
+  ): Promise<string | null> => {
     try {
       const database = getDatabase(app);
       const attendanceRef = ref(database, `attendance/${targetUserId}`);
       const snapshot = await get(attendanceRef);
-      
+
       if (!snapshot.exists()) {
         console.log('No attendance data found for user:', targetUserId);
         return null;
       }
-      
+
       const data = snapshot.val();
       console.log('Searching through attendance data:', data);
-      
+
       // If attendanceData has a timestamp, try to find matching record
       if (attendanceData?.timestamp) {
         if (Array.isArray(data)) {
-          const index = data.findIndex(item => 
-            item && item.timestamp === attendanceData.timestamp
+          const index = data.findIndex(
+            item => item && item.timestamp === attendanceData.timestamp,
           );
           if (index !== -1) {
             console.log('Found matching record at index:', index);
             return index.toString();
           }
         } else if (typeof data === 'object') {
-          const matchingKey = Object.keys(data).find(key => 
-            data[key] && data[key].timestamp === attendanceData.timestamp
+          const matchingKey = Object.keys(data).find(
+            key =>
+              data[key] && data[key].timestamp === attendanceData.timestamp,
           );
           if (matchingKey) {
             console.log('Found matching record with key:', matchingKey);
@@ -360,28 +400,37 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
           }
         }
       }
-      
+
       // Fallback: try to find by date and time
       if (attendanceData?.tanggal && attendanceData?.waktu) {
         if (Array.isArray(data)) {
-          const index = data.findIndex(item => 
-            item && item.tanggal === attendanceData.tanggal && item.waktu === attendanceData.waktu
+          const index = data.findIndex(
+            item =>
+              item &&
+              item.tanggal === attendanceData.tanggal &&
+              item.waktu === attendanceData.waktu,
           );
           if (index !== -1) {
             console.log('Found matching record by date/time at index:', index);
             return index.toString();
           }
         } else if (typeof data === 'object') {
-          const matchingKey = Object.keys(data).find(key => 
-            data[key] && data[key].tanggal === attendanceData.tanggal && data[key].waktu === attendanceData.waktu
+          const matchingKey = Object.keys(data).find(
+            key =>
+              data[key] &&
+              data[key].tanggal === attendanceData.tanggal &&
+              data[key].waktu === attendanceData.waktu,
           );
           if (matchingKey) {
-            console.log('Found matching record by date/time with key:', matchingKey);
+            console.log(
+              'Found matching record by date/time with key:',
+              matchingKey,
+            );
             return matchingKey;
           }
         }
       }
-      
+
       console.log('No matching attendance record found');
       return null;
     } catch (error) {
@@ -391,9 +440,12 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
   };
 
   // Update attendance status in Firebase Realtime Database
-  const updateAttendanceInFirebase = async (status: string, confirmed = false): Promise<boolean> => {
+  const updateAttendanceInFirebase = async (
+    status: string,
+    confirmed = false,
+  ): Promise<boolean> => {
     let finalAttendanceKey = attendanceId || attendanceKey;
-    
+
     const targetUserId = userData?.uid || userId;
     if (!targetUserId) {
       Alert.alert('Error', 'User ID not found. Cannot update record.');
@@ -403,60 +455,84 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
     console.log('Initial attendance key:', finalAttendanceKey);
     console.log('Target user ID:', targetUserId);
     console.log('Attendance data:', attendanceData);
+    console.log(
+      `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+    );
 
     // If no key provided or key is invalid, try to find the correct one
     if (!finalAttendanceKey) {
       console.log('No attendance key provided, searching for correct key...');
-      finalAttendanceKey = await findAttendanceKey(targetUserId, attendanceData);
-      
+      finalAttendanceKey = await findAttendanceKey(
+        targetUserId,
+        attendanceData,
+      );
+
       if (!finalAttendanceKey) {
         Alert.alert(
-          'Error', 
+          'Error',
           'Attendance record not found. This might be because:\n\n' +
-          '• The attendance record was deleted\n' +
-          '• The record structure has changed\n' +
-          '• There\'s a data synchronization issue\n\n' +
-          'Please try refreshing the list and try again.'
+            '• The attendance record was deleted\n' +
+            '• The record structure has changed\n' +
+            "• There's a data synchronization issue\n\n" +
+            'Please try refreshing the list and try again.',
         );
         return false;
       }
-      
+
       console.log('Found attendance key:', finalAttendanceKey);
     }
 
     try {
       setIsUpdating(true);
-      
+
       const database = getDatabase(app);
       const currentUser = getCurrentUser();
-      
+
       // Create reference to the specific attendance record
-      const attendanceRef = ref(database, `attendance/${targetUserId}/${finalAttendanceKey}`);
-      
-      console.log('Attempting to update path:', `attendance/${targetUserId}/${finalAttendanceKey}`);
-      
+      const attendanceRef = ref(
+        database,
+        `attendance/${targetUserId}/${finalAttendanceKey}`,
+      );
+
+      console.log(
+        'Attempting to update path:',
+        `attendance/${targetUserId}/${finalAttendanceKey}`,
+      );
+
       // First, check if the record exists
       const snapshot = await get(attendanceRef);
       if (!snapshot.exists()) {
         console.log('Record not found at path, trying to find correct key...');
-        
+
         // Try to find the correct key
         const foundKey = await findAttendanceKey(targetUserId, attendanceData);
         if (foundKey) {
           finalAttendanceKey = foundKey;
-          const newAttendanceRef = ref(database, `attendance/${targetUserId}/${finalAttendanceKey}`);
+          const newAttendanceRef = ref(
+            database,
+            `attendance/${targetUserId}/${finalAttendanceKey}`,
+          );
           const newSnapshot = await get(newAttendanceRef);
-          
+
           if (!newSnapshot.exists()) {
-            Alert.alert('Error', 'Attendance record not found in database even after searching.');
+            Alert.alert(
+              'Error',
+              'Attendance record not found in database even after searching.',
+            );
             return false;
           }
-          
-          console.log('Found correct path:', `attendance/${targetUserId}/${finalAttendanceKey}`);
-          
+
+          console.log(
+            'Found correct path:',
+            `attendance/${targetUserId}/${finalAttendanceKey}`,
+          );
+
           // Update the reference to the correct path
-          const correctAttendanceRef = ref(database, `attendance/${targetUserId}/${finalAttendanceKey}`);
-          
+          const correctAttendanceRef = ref(
+            database,
+            `attendance/${targetUserId}/${finalAttendanceKey}`,
+          );
+
           // Prepare update data
           const updateData: any = {
             status: status,
@@ -479,7 +555,7 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
       } else {
         // Record exists at the original path, proceed with update
         console.log('Record found at original path, proceeding with update');
-        
+
         // Prepare update data
         const updateData: any = {
           status: status,
@@ -496,32 +572,34 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
         // Update the record in Firebase Realtime Database
         await update(attendanceRef, updateData);
       }
-      
-      console.log('Attendance updated successfully:', { 
-        userId: targetUserId, 
-        attendanceKey: finalAttendanceKey, 
-        status, 
+
+      console.log('Attendance updated successfully:', {
+        userId: targetUserId,
+        attendanceKey: finalAttendanceKey,
+        status,
         confirmed,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       // Reset unsaved changes flag after successful update
       setHasUnsavedChanges(false);
-      
+
       return true;
     } catch (error: any) {
       console.error('Error updating attendance:', error);
-      
-      let errorMessage = 'Failed to update attendance record. Please try again.';
-      
+
+      let errorMessage =
+        'Failed to update attendance record. Please try again.';
+
       if (error?.message === 'User not authenticated') {
         errorMessage = 'Admin user not authenticated. Please login again.';
       } else if (error?.code === 'PERMISSION_DENIED') {
-        errorMessage = 'Permission denied. You may not have access to update this record.';
+        errorMessage =
+          'Permission denied. You may not have access to update this record.';
       } else if (error?.code === 'NETWORK_ERROR') {
         errorMessage = 'Network error. Please check your internet connection.';
       }
-      
+
       Alert.alert('Update Failed', errorMessage);
       return false;
     } finally {
@@ -537,12 +615,12 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
 
     setCurrentStatus(newStatus);
     setHasUnsavedChanges(true);
-    
+
     // Show immediate feedback
     Alert.alert(
       'Status Updated',
       `Status changed to "${newStatus}". Don't forget to confirm to save changes.`,
-      [{ text: 'OK' }]
+      [{text: 'OK'}],
     );
   };
 
@@ -553,8 +631,8 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
       return;
     }
 
-    const statusText = hasUnsavedChanges 
-      ? `confirm this attendance record with the new status "${currentStatus}"` 
+    const statusText = hasUnsavedChanges
+      ? `confirm this attendance record with the new status "${currentStatus}"`
       : `confirm this attendance record with status "${currentStatus}"`;
 
     Alert.alert(
@@ -568,7 +646,10 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
         {
           text: 'Confirm',
           onPress: async () => {
-            const success = await updateAttendanceInFirebase(currentStatus, true);
+            const success = await updateAttendanceInFirebase(
+              currentStatus,
+              true,
+            );
             if (success) {
               Alert.alert(
                 'Success',
@@ -578,12 +659,12 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
                     text: 'OK',
                     onPress: () => navigation.goBack(),
                   },
-                ]
+                ],
               );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -602,13 +683,13 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
         'Discard changes?',
         'You have unsaved changes. Are you sure you want to discard them and leave?',
         [
-          { text: "Don't leave", style: 'cancel', onPress: () => {} },
+          {text: "Don't leave", style: 'cancel', onPress: () => {}},
           {
             text: 'Discard',
             style: 'destructive',
             onPress: () => navigation.dispatch(e.data.action),
           },
-        ]
+        ],
       );
     });
 
@@ -620,14 +701,13 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.contentWrapper}>
-          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-            <Header text="User Details"/>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}>
+            <Header text="User Details" />
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>No attendance data available</Text>
-              <Button 
-                text="Go Back" 
-                onPress={() => navigation.goBack()}
-              />
+              <Button text="Go Back" onPress={() => navigation.goBack()} />
             </View>
           </ScrollView>
           <ButtonNavAdmin navigation={navigation} />
@@ -639,50 +719,65 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentWrapper}>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <Header text="User Details"/>
-          
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}>
+          <Header text="User Details" />
+
           {/* Large attendance photo */}
           <View style={styles.imageContainer}>
             {attendanceData?.photo ? (
               <Image
-                source={{ uri: attendanceData.photo }}
+                source={{uri: attendanceData.photo}}
                 style={styles.imageBox}
                 resizeMode="cover"
-                onError={(err) => {
+                onError={err => {
                   console.error('Attendance image load error:', err);
                 }}
               />
             ) : attendanceData?.photoBase64 ? (
               <Image
-                source={{ uri: attendanceData.photoBase64 }}
+                source={{uri: attendanceData.photoBase64}}
                 style={styles.imageBox}
                 resizeMode="cover"
-                onError={(err) => {
+                onError={err => {
                   console.error('Attendance image load error:', err);
                 }}
               />
             ) : (
               <View style={[styles.imageBox, styles.placeholderImageBox]}>
-                <Text style={styles.placeholderImageText}>No Attendance Photo</Text>
+                <Text style={styles.placeholderImageText}>
+                  No Attendance Photo
+                </Text>
               </View>
             )}
           </View>
 
           <View>
-            <UserDetailsCard userData={userData || { fullName: name, NIP: nip, department, email }} />
-            <ScanDetailsCard 
-              attendanceData={attendanceData} 
+            <UserDetailsCard
+              userData={
+                userData || {fullName: name, NIP: nip, department, email}
+              }
+            />
+            <ScanDetailsCard
+              attendanceData={attendanceData}
               onStatusUpdate={handleStatusUpdate}
               currentStatus={currentStatus}
             />
           </View>
-          
-          <Button 
-            text={isUpdating ? "Updating..." : hasUnsavedChanges ? "Confirm Changes" : "Confirm"} 
+
+          <Button
+            text={
+              isUpdating
+                ? 'Updating...'
+                : hasUnsavedChanges
+                ? 'Confirm Changes'
+                : 'Confirm'
+            }
             onPress={handleConfirm}
             disabled={isUpdating}
           />
+          {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
 
           {hasUnsavedChanges && (
             <View style={styles.warningContainer}>
@@ -757,7 +852,7 @@ const styles = StyleSheet.create({
     padding: 16,
     margin: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
@@ -802,7 +897,7 @@ const styles = StyleSheet.create({
     borderColor: '#D0D0D0',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
     elevation: 3,
     zIndex: 1,
@@ -873,7 +968,7 @@ const styles = StyleSheet.create({
     borderColor: '#C0C0C0',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
     elevation: 5,
     zIndex: 1000,

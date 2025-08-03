@@ -5,7 +5,7 @@ import Account from './account';
 import Home from './home';
 import Activity from './activity';
 import DashboardAdmin from './dashboard';
-import Scan from './scan';
+import Scan from './scan/pdf';
 import Lists from './adminList';
 import UserDetail from './userDetails';
 import UserProfile from './userProfile';
@@ -20,4 +20,5 @@ export {
   Scan,
   Lists,
   UserDetail,
-  UserProfile};
+  UserProfile,
+};

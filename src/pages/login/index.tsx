@@ -54,8 +54,14 @@ const SignIn = ({navigation}: {navigation: any}) => {
 
       if (isAdminEmail(email)) {
         navigation.replace('Dashboard');
+        console.log(
+          `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+        );
       } else {
         navigation.replace('Home');
+        console.log(
+          `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+        );
       }
     } catch (error: any) {
       let errorMessage = 'Login failed. Please try again.';
@@ -146,6 +152,7 @@ const SignIn = ({navigation}: {navigation: any}) => {
         <Logo style={styles.logo} />
         <Text style={styles.title}>Welcome Back</Text>
         <View style={styles.inputContainer}>
+          {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
           <TextTitle text="Email Address" />
           <TextInput
             placeholder="Email Address"

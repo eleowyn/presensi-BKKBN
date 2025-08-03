@@ -11,16 +11,20 @@ import {
   Platform,
   Linking,
   ActivityIndicator,
+  Alert, // Added for selection dialog
 } from 'react-native';
 import React, {useState} from 'react';
 import {Button, Buttonnavigation, Header} from '../../components';
-import {launchCamera} from 'react-native-image-picker';
+// Updated to include launchImageLibrary
+import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {showMessage} from 'react-native-flash-message';
 import Geolocation from 'react-native-geolocation-service';
 import axios from 'axios';
 import {getDatabase, ref, push} from 'firebase/database';
-import {getAuth} from 'firebase/auth'; // Add this import
-import app from '../../config/Firebase'; // Adjust path as needed
+import {getAuth} from 'firebase/auth';
+import app from '../../config/Firebase';
+// Added for the dropdown menu
+import {Picker} from '@react-native-picker/picker';
 
 const Scan = ({navigation}: {navigation: any}) => {
   const [tanggal, setTanggal] = useState('');
@@ -51,15 +55,22 @@ const Scan = ({navigation}: {navigation: any}) => {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get current user function
+  // New state for the dropdown menu
+  const [activityType, setActivityType] = useState('Dinas di Luar');
+  // New state for the file attachment
+  const [attachment, setAttachment] = useState<{
+    uri: string;
+    base64?: string;
+  } | null>(null);
+
+  // --- EXISTING FUNCTIONS (getCurrentUser, getAttendanceStatus, etc.) ---
+  // (No changes to these functions, they are kept as they were)
   const getCurrentUser = () => {
     const auth = getAuth();
     const user = auth.currentUser;
-
     if (!user) {
       throw new Error('User not authenticated');
     }
-
     return {
       uid: user.uid,
       email: user.email,
@@ -68,38 +79,25 @@ const Scan = ({navigation}: {navigation: any}) => {
     };
   };
 
-  // Function to determine attendance status based on time
   const getAttendanceStatus = (timeString: string) => {
     const [hours, minutes] = timeString.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes;
-
-    // Convert time ranges to minutes
     const presentStart = 8 * 60; // 08:00
     const presentEnd = 8 * 60 + 30; // 08:30
     const unexcusedStart = 17 * 60; // 17:00
-    const unexcusedEnd = 7 * 60 + 59; // 07:59 (next day, but we'll handle as same day for simplicity)
-
-    // Check for Present (8:00 - 8:30 AM)
+    const unexcusedEnd = 7 * 60 + 59; // 07:59
     if (totalMinutes >= presentStart && totalMinutes <= presentEnd) {
       return 'Present';
     }
-
-    // Check for Unexcused (17:00 - 07:59)
-    // This handles both evening (17:00-23:59) and early morning (00:00-07:59)
     if (totalMinutes >= unexcusedStart || totalMinutes <= unexcusedEnd) {
       return 'Unexcused';
     }
-
-    // Everything else is Late
     return 'Late';
   };
 
-  // Multiple geocoding services for better accuracy and place names
   const getLocationDetails = async (lat: number, lon: number) => {
     try {
-      // Try multiple services for better accuracy
       const results = await Promise.allSettled([
-        // Nominatim (OpenStreetMap) - Free
         axios.get(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&extratags=1&namedetails=1`,
           {
@@ -112,8 +110,6 @@ const Scan = ({navigation}: {navigation: any}) => {
         console.log(
           `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
         ),
-
-        // LocationIQ - Alternative service (free tier available)
         axios
           .get(
             `https://us1.locationiq.com/v1/reverse.php?key=YOUR_LOCATIONIQ_KEY&lat=${lat}&lon=${lon}&format=json&zoom=18&addressdetails=1`,
@@ -121,18 +117,13 @@ const Scan = ({navigation}: {navigation: any}) => {
               timeout: 8000,
             },
           )
-          .catch(() => null), // Fallback if no API key
+          .catch(() => null),
       ]);
-
       let bestResult = null;
       let placeName = null;
-
-      // Process Nominatim result
       if (results[0].status === 'fulfilled') {
         const data = results[0].value.data;
         const {address, display_name, namedetails} = data;
-
-        // Extract place name from various sources
         placeName =
           namedetails?.name ||
           address?.amenity ||
@@ -143,7 +134,6 @@ const Scan = ({navigation}: {navigation: any}) => {
           address?.tourism ||
           address?.public_building ||
           null;
-
         const road = address.road || address.pedestrian || '';
         const houseNumber = address.house_number || '';
         const village = address.village || address.hamlet || '';
@@ -152,21 +142,16 @@ const Scan = ({navigation}: {navigation: any}) => {
         const state = address.state || address.province || '';
         const postcode = address.postcode || '';
         const country = address.country || '';
-
-        // Build short address with house number
         const addressParts = [
           houseNumber && road ? `${road} ${houseNumber}` : road,
           village,
           suburb,
           city,
         ].filter(Boolean);
-
         const shortAddress =
           addressParts.length > 0
             ? addressParts.join(', ')
             : 'Location Unknown';
-
-        // Full detailed address
         const fullAddress =
           [
             houseNumber && road ? `${road} ${houseNumber}` : road,
@@ -179,7 +164,6 @@ const Scan = ({navigation}: {navigation: any}) => {
           ]
             .filter(Boolean)
             .join(', ') || 'Location Unknown';
-
         bestResult = {
           shortAddress,
           fullAddress,
@@ -187,15 +171,12 @@ const Scan = ({navigation}: {navigation: any}) => {
           source: 'OpenStreetMap',
         };
       }
-
-      // If LocationIQ was successful and we don't have a good result, use it
       if (
         !bestResult &&
         results[1].status === 'fulfilled' &&
         results[1].value
       ) {
         const data = results[1].value.data;
-        // Process LocationIQ result similar to above
         bestResult = {
           shortAddress:
             data.display_name?.split(',').slice(0, 3).join(', ') ||
@@ -205,7 +186,6 @@ const Scan = ({navigation}: {navigation: any}) => {
           source: 'LocationIQ',
         };
       }
-
       return bestResult;
     } catch (error) {
       console.error('Reverse geocoding error:', error);
@@ -235,39 +215,29 @@ const Scan = ({navigation}: {navigation: any}) => {
 
   const fetchDateTimeAndLocation = async () => {
     setLoading(true);
-
-    // Date and Time
     const now = new Date();
     setTanggal(now.toLocaleDateString('id-ID'));
     setWaktu(
       now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}),
     );
-
-    // Location with MAXIMUM accuracy settings
     try {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         throw new Error('Location Premission Denied');
       }
-
-      // Multiple location attempts for maximum accuracy
       let bestPosition = null;
       let attempts = 0;
       const maxAttempts = 3;
-
       while (
         attempts < maxAttempts &&
         (!bestPosition || bestPosition.coords.accuracy > 10)
       ) {
         attempts++;
-
         try {
           console.log(`Location attempt ${attempts}/${maxAttempts}`);
-
           const position = await new Promise((resolve, reject) => {
             const watchId = Geolocation.watchPosition(
               pos => {
-                // Accept position if accuracy is very good (< 10m) or after timeout
                 if (
                   pos.coords.accuracy <= 10 ||
                   Date.now() - startTime > 15000
@@ -283,43 +253,34 @@ const Scan = ({navigation}: {navigation: any}) => {
               {
                 enableHighAccuracy: true,
                 timeout: 20000,
-                maximumAge: 0, // Always get fresh location
-                distanceFilter: 0, // Get all location updates
-                interval: 1000, // Check every second
-                fastestInterval: 500, // Fastest update rate
+                maximumAge: 0,
+                distanceFilter: 0,
+                interval: 1000,
+                fastestInterval: 500,
                 forceRequestLocation: true,
-                showLocationDialog: true, // Android: Show system location dialog
-                forceLocationManager: true, // Android: Use LocationManager instead of FusedLocationProvider
+                showLocationDialog: true,
+                forceLocationManager: true,
               },
             );
-
             const startTime = Date.now();
           });
-
-          // Keep the most accurate position
           if (
             !bestPosition ||
             position.coords.accuracy < bestPosition.coords.accuracy
           ) {
             bestPosition = position;
           }
-
-          // If we got very high accuracy (< 5m), break early
           if (position.coords.accuracy <= 5) {
             console.log(
               `Excellent accuracy achieved: ${position.coords.accuracy}m`,
             );
             break;
           }
-
-          // Short delay between attempts
           if (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
         } catch (attemptError) {
           console.log(`Attempt ${attempts} failed:`, attemptError);
-
-          // If this is the last attempt, try with fallback settings
           if (attempts === maxAttempts) {
             try {
               bestPosition = await new Promise((resolve, reject) => {
@@ -336,15 +297,12 @@ const Scan = ({navigation}: {navigation: any}) => {
           }
         }
       }
-
       if (!bestPosition) {
         throw new Error(`Can't get location after multiple attempt`);
       }
-
       const accuracy = bestPosition.coords.accuracy;
       let accuracyLevel;
       let isHighAccuracy;
-
       if (accuracy <= 5) {
         accuracyLevel = 'Sangat Akurat';
         isHighAccuracy = true;
@@ -358,13 +316,10 @@ const Scan = ({navigation}: {navigation: any}) => {
         accuracyLevel = 'Kurang Akurat';
         isHighAccuracy = false;
       }
-
-      // Get enhanced location details
       const locationDetails = await getLocationDetails(
         bestPosition.coords.latitude,
         bestPosition.coords.longitude,
       );
-
       setLocation({
         latitude: bestPosition.coords.latitude,
         longitude: bestPosition.coords.longitude,
@@ -375,7 +330,6 @@ const Scan = ({navigation}: {navigation: any}) => {
         error: null,
         isHighAccuracy,
       });
-
       const locationText = locationDetails?.placeName
         ? `${locationDetails.placeName} - ${locationDetails.shortAddress}`
         : locationDetails?.shortAddress ||
@@ -383,7 +337,6 @@ const Scan = ({navigation}: {navigation: any}) => {
             bestPosition.coords.latitude.toFixed(6) +
             ', ' +
             bestPosition.coords.longitude.toFixed(6);
-
       showMessage({
         message: `Lokasi Terdeteksi (${accuracyLevel})`,
         description: `${locationText}\nPercobaan: ${attempts}, Akurasi: ±${accuracy.toFixed(
@@ -407,43 +360,88 @@ const Scan = ({navigation}: {navigation: any}) => {
     }
   };
 
-  const handleLaunchCamera = async () => {
+  /**
+   * REUSABLE IMAGE PICKER LOGIC
+   * This section contains new functions to handle image selection
+   * from both the camera and gallery, for both the main photo and the attachment.
+   */
+
+  // Main handler that shows an Alert to choose between Camera and Gallery
+  const handleImageSelection = (
+    isMainPhoto: boolean,
+    setter: React.Dispatch<
+      React.SetStateAction<{uri: string; base64?: string} | null>
+    >,
+  ) => {
+    Alert.alert(
+      'Pilih Sumber Gambar',
+      'Pilih foto dari galeri atau ambil foto baru.',
+      [
+        {
+          text: 'Galeri',
+          onPress: () => pickImage('gallery', isMainPhoto, setter),
+        },
+        {
+          text: 'Kamera',
+          onPress: () => pickImage('camera', isMainPhoto, setter),
+        },
+        {text: 'Batal', style: 'cancel'},
+      ],
+      {cancelable: true},
+    );
+  };
+
+  // Helper function that launches the correct image picker and processes the result
+  const pickImage = async (
+    source: 'camera' | 'gallery',
+    isMainPhoto: boolean,
+    setter: React.Dispatch<
+      React.SetStateAction<{uri: string; base64?: string} | null>
+    >,
+  ) => {
+    const options = {
+      mediaType: 'photo' as const,
+      includeBase64: true,
+      quality: 0.7,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      saveToPhotos: true,
+      cameraType: 'back' as const,
+    };
+
     try {
-      const result = await launchCamera({
-        mediaType: 'photo',
-        includeBase64: true, // Changed to true to get base64
-        quality: 0.7,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        saveToPhotos: true,
-        cameraType: 'back',
-      });
+      const result =
+        source === 'camera'
+          ? await launchCamera(options)
+          : await launchImageLibrary(options);
 
       if (result.didCancel) {
         showMessage({
-          message: 'Warning',
-          description: 'Taking Photo Canceled',
+          message: 'Peringatan',
+          description: 'Pemilihan gambar dibatalkan.',
           type: 'warning',
         });
         return;
       }
 
       if (result.errorCode || !result.assets?.[0]?.uri) {
-        throw new Error(result.errorMessage || 'Failed to take photo');
+        throw new Error(result.errorMessage || 'Gagal memilih gambar.');
       }
 
       const asset = result.assets[0];
-      setPhoto({
+      setter({
         uri: asset.uri,
-        base64: asset.base64, // Store base64 data
+        base64: asset.base64,
       });
 
-      // Get location after photo is successfully taken
-      await fetchDateTimeAndLocation();
+      // If it's the main photo, also fetch location and time
+      if (isMainPhoto) {
+        await fetchDateTimeAndLocation();
+      }
     } catch (error) {
       showMessage({
         message: 'Error',
-        description: error.message,
+        description: (error as Error).message,
         type: 'danger',
       });
     }
@@ -461,7 +459,8 @@ const Scan = ({navigation}: {navigation: any}) => {
       showMessage({
         message: 'Error',
         description:
-          'Failed to open Maps: ' + (err.message || 'Map App is not found'),
+          'Failed to open Maps: ' +
+          ((err as Error).message || 'Map App is not found'),
         type: 'danger',
       }),
     );
@@ -472,9 +471,9 @@ const Scan = ({navigation}: {navigation: any}) => {
     await fetchDateTimeAndLocation();
   };
 
-  // Updated confirmation handler with Firebase Realtime Database and user information
+  // UPDATED confirmation handler to include new fields
   const handleConfirmation = async () => {
-    if (isSubmitting) return; // Prevent multiple submissions
+    if (isSubmitting) return;
 
     if (!photo || !photo.base64) {
       showMessage({
@@ -494,41 +493,22 @@ const Scan = ({navigation}: {navigation: any}) => {
       return;
     }
 
-    if (!keterangan.trim()) {
-      showMessage({
-        message: 'Peringatan',
-        description: 'Harap isi keterangan terlebih dahulu',
-        type: 'warning',
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // Get current user information
       const currentUser = getCurrentUser();
-
-      // Get Firebase Realtime Database instance
       const database = getDatabase(app);
-
-      // Save under user's UID for better organization
       const userAttendanceRef = ref(database, `attendance/${currentUser.uid}`);
-
-      // Determine attendance status based on current time
       const attendanceStatus = getAttendanceStatus(waktu);
 
-      // Create submission data with user information
       const submissionData = {
-        // User information
         user: {
           uid: currentUser.uid,
           email: currentUser.email,
           displayName: currentUser.displayName,
           phoneNumber: currentUser.phoneNumber,
         },
-        // Attendance data
-        photo: `data:image/jpeg;base64,${photo.base64}`, // Store as base64 with data URI prefix
+        photo: `data:image/jpeg;base64,${photo.base64}`,
         location: {
           latitude: location.latitude,
           longitude: location.longitude,
@@ -540,11 +520,15 @@ const Scan = ({navigation}: {navigation: any}) => {
         },
         tanggal,
         waktu,
-        keterangan: keterangan.trim(), // Add keterangan field
-        status: attendanceStatus, // Add attendance status based on time
-        timestamp: Date.now(), // Add timestamp for sorting
-        createdAt: new Date().toISOString(), // Human readable timestamp
-        // Additional metadata
+        // New fields added to submission data
+        activityType: activityType,
+        keterangan: keterangan.trim(),
+        attachment: attachment
+          ? `data:image/jpeg;base64,${attachment.base64}`
+          : null,
+        status: attendanceStatus,
+        timestamp: Date.now(),
+        createdAt: new Date().toISOString(),
         deviceInfo: {
           platform: Platform.OS,
           version: Platform.Version,
@@ -553,13 +537,12 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       console.log('Submitting data to Firebase for user:', currentUser.email);
       console.log('Attendance status:', attendanceStatus);
+      console.log('Activity Type:', activityType);
 
-      // Save to Firebase Realtime Database under user's UID
       const newAttendanceRef = await push(userAttendanceRef, submissionData);
 
       console.log('Data successfully saved with ID:', newAttendanceRef.key);
 
-      // Show success message with status information
       showMessage({
         message: 'Success!',
         description: `Data is saved for ${
@@ -569,24 +552,17 @@ const Scan = ({navigation}: {navigation: any}) => {
         duration: 3000,
       });
 
-      // Navigate back to home page
       setTimeout(() => {
         navigation.navigate('Home');
       }, 1000);
     } catch (error) {
       console.error('Firebase submission error:', error);
-
       let errorMessage = 'Something went wrong';
-
-      if (error.message === 'User not authenticated') {
+      if ((error as Error).message === 'User not authenticated') {
         errorMessage = 'User is not authenticated. Please sign in first.';
-        // Optionally navigate to login screen
-        // navigation.navigate('Login');
       } else {
-        errorMessage = `${errorMessage}: ${error.message}`;
+        errorMessage = `${errorMessage}: ${(error as Error).message}`;
       }
-
-      // Show error message with more details
       showMessage({
         message: 'Fail!',
         description: errorMessage,
@@ -610,7 +586,7 @@ const Scan = ({navigation}: {navigation: any}) => {
           <View style={styles.photoSection}>
             <Text style={styles.sectionLabel}>Foto</Text>
             <TouchableOpacity
-              onPress={handleLaunchCamera}
+              onPress={() => handleImageSelection(true, setPhoto)}
               style={styles.photoContainer}>
               {photo ? (
                 <Image
@@ -620,7 +596,9 @@ const Scan = ({navigation}: {navigation: any}) => {
                 />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Text style={styles.placeholderText}>Ambil Foto</Text>
+                  <Text style={styles.placeholderText}>
+                    Ambil Foto / Pilih dari Galeri
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -656,7 +634,6 @@ const Scan = ({navigation}: {navigation: any}) => {
                   <Text style={styles.refreshButtonText}>↻</Text>
                 </TouchableOpacity>
               </View>
-
               <TouchableOpacity
                 style={[
                   styles.locationBox,
@@ -703,20 +680,59 @@ const Scan = ({navigation}: {navigation: any}) => {
             </View>
           </View>
 
+          {/* NEW: Dropdown for Activity Type */}
           <View style={styles.keteranganSection}>
-            <Text style={styles.sectionLabel}>Keterangan *</Text>
+            <Text style={styles.sectionLabel}>Jenis Kegiatan</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={activityType}
+                onValueChange={itemValue => setActivityType(itemValue)}
+                style={styles.picker}>
+                <Picker.Item label="Dinas di Luar" value="Dinas di Luar" />
+                <Picker.Item label="Rapat" value="Rapat" />
+                <Picker.Item label="Acara" value="Acara" />
+              </Picker>
+            </View>
+          </View>
 
+          <View style={styles.keteranganSection}>
+            <Text style={styles.sectionLabel}>Keterangan</Text>
             {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
             <RNTextInput
               value={keterangan}
               onChangeText={setKeterangan}
               style={styles.keteranganInput}
-              placeholder="Masukkan keterangan absensi (wajib diisi)"
+              placeholder="Masukkan keterangan absensi (opsional)"
               placeholderTextColor="#999"
               multiline={true}
               numberOfLines={4}
               textAlignVertical="top"
             />
+          </View>
+
+          {/* NEW: File Attachment Section */}
+          <View style={styles.keteranganSection}>
+            <Text style={styles.sectionLabel}>Lampiran (Opsional)</Text>
+            {attachment ? (
+              <View>
+                <Image
+                  source={{uri: attachment.uri}}
+                  style={styles.attachmentPreview}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  onPress={() => setAttachment(null)}
+                  style={styles.removeAttachmentButton}>
+                  <Text style={styles.removeAttachmentText}>Hapus</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => handleImageSelection(false, setAttachment)}
+                style={styles.uploadButton}>
+                <Text style={styles.uploadButtonText}>Pilih File</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.buttonContainer}>
@@ -740,6 +756,7 @@ const Scan = ({navigation}: {navigation: any}) => {
   );
 };
 
+// Added styles for new components
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -753,7 +770,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 30,
     marginBottom: 30,
   },
   submitLoader: {
@@ -768,11 +785,11 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 10,
     overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
   },
   photoPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 10,
@@ -806,13 +823,16 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   refreshButtonText: {
-    fontSize: 16,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
   },
   inputGroup: {
     marginBottom: 15,
   },
   inputLabel: {
     fontSize: 14,
+    color: '#333',
     fontWeight: '500',
     marginBottom: 5,
   },
@@ -822,6 +842,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     backgroundColor: '#f9f9f9',
+    color: '#333',
   },
   locationBox: {
     minHeight: 140,
@@ -833,11 +854,11 @@ const styles = StyleSheet.create({
   },
   highAccuracyBox: {
     borderColor: '#4CAF50',
-    backgroundColor: '#f8fff8',
+    backgroundColor: '#f0fff0',
   },
   lowAccuracyBox: {
     borderColor: '#FF9800',
-    backgroundColor: '#fffbf0',
+    backgroundColor: '#fffaf0',
   },
   placeNameText: {
     fontSize: 16,
@@ -875,6 +896,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: 'red',
     fontSize: 14,
+    textAlign: 'center',
   },
   placeholderText: {
     color: '#999',
@@ -884,6 +906,8 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 5,
   },
   keteranganSection: {
     marginTop: 20,
@@ -896,7 +920,53 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     minHeight: 100,
     fontSize: 14,
+    color: '#333',
+  },
+  // Styles for Picker/Dropdown
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  picker: {
+    color: '#333',
+    // You might need to adjust height for Android/iOS consistency
+  },
+  // Styles for Attachment
+  uploadButton: {
     marginTop: 5,
+    backgroundColor: '#f0f0f0',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+  },
+  uploadButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  attachmentPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginTop: 5,
+  },
+  removeAttachmentButton: {
+    position: 'absolute',
+    top: 15,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+  },
+  removeAttachmentText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

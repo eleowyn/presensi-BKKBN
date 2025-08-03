@@ -1,7 +1,17 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Platform } from 'react-native';
-import React, { useState, useEffect } from 'react';
-import { ButtonNavAdmin, Header, TextInputAdmin } from '../../components';
-import { getDatabase, ref, onValue } from 'firebase/database';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
+  Modal,
+  Platform,
+} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {ButtonNavAdmin, Header, TextInputAdmin} from '../../components';
+import {getDatabase, ref, onValue} from 'firebase/database';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Type definitions
@@ -56,14 +66,16 @@ const sessionStatuses = [
   'Unexcused',
 ];
 
-const Lists = ({ navigation }: { navigation: NavigationProps }) => {
+const Lists = ({navigation}: {navigation: NavigationProps}) => {
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [searchText, setSearchText] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [usersData, setUsersData] = useState<Record<string, UserData>>({});
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<
+    AttendanceRecord[]
+  >([]);
   const [loading, setLoading] = useState(true);
-  
+
   // New state for date and session filtering
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSession, setSelectedSession] = useState('All Sessions');
@@ -104,7 +116,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
     return date.toLocaleDateString('id-ID', {
       day: '2-digit',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -115,12 +127,16 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
     const attendanceRef = ref(db, 'attendance');
 
     // First, fetch users data for reference
-    const usersUnsubscribe = onValue(usersRef, (snapshot) => {
+    const usersUnsubscribe = onValue(usersRef, snapshot => {
       try {
         if (snapshot.exists()) {
           const userData = snapshot.val();
           setUsersData(userData);
-          console.log('Fetched users data:', Object.keys(userData).length, 'users');
+          console.log(
+            'Fetched users data:',
+            Object.keys(userData).length,
+            'users',
+          );
         }
       } catch (error) {
         console.error('Error fetching users data:', error);
@@ -128,37 +144,46 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
     });
 
     // Then fetch attendance records
-    const attendanceUnsubscribe = onValue(attendanceRef, (snapshot) => {
+    const attendanceUnsubscribe = onValue(attendanceRef, snapshot => {
       try {
         if (snapshot.exists()) {
           const attendanceData = snapshot.val();
           const allAttendanceRecords: AttendanceRecord[] = [];
-          
+
           // Process attendance data for each user
           Object.keys(attendanceData).forEach(userId => {
             const userAttendance = attendanceData[userId];
             let attendanceArray = [];
-            
+
             // Handle both array and object formats
             if (Array.isArray(userAttendance)) {
-              attendanceArray = userAttendance.filter((item: any) => item && item.timestamp);
+              attendanceArray = userAttendance.filter(
+                (item: any) => item && item.timestamp,
+              );
             } else if (typeof userAttendance === 'object') {
-              attendanceArray = Object.values(userAttendance).filter((item: any) => item && item.timestamp);
+              attendanceArray = Object.values(userAttendance).filter(
+                (item: any) => item && item.timestamp,
+              );
             }
-            
+
             // Add userId to each attendance record
             attendanceArray.forEach((record: any) => {
               allAttendanceRecords.push({
                 ...record,
-                userId: userId
+                userId: userId,
               });
             });
           });
-          
+
           // Sort by timestamp (newest first)
-          allAttendanceRecords.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-          
-          console.log('Fetched attendance records:', allAttendanceRecords.length);
+          allAttendanceRecords.sort(
+            (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
+          );
+
+          console.log(
+            'Fetched attendance records:',
+            allAttendanceRecords.length,
+          );
           setAttendanceRecords(allAttendanceRecords);
         } else {
           setAttendanceRecords([]);
@@ -176,23 +201,24 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
     };
   }, []);
 
-
   // Get attendance status from record
   const getAttendanceStatus = (record: AttendanceRecord) => {
     // First, check if there's a status field in the record (from Firebase)
     if (record.status) {
       return record.status;
     }
-    
+
     // Fallback to time-based calculation if no status field exists
     const waktu = record.waktu;
     if (!waktu) return 'Unexcused';
-    
-    const [hours, minutes] = waktu.split(':').map((num: string) => parseInt(num));
+
+    const [hours, minutes] = waktu
+      .split(':')
+      .map((num: string) => parseInt(num));
     const timeInMinutes = hours * 60 + minutes;
     const onTimeThreshold = 8 * 60; // 8:00 AM
     const lateThreshold = 8 * 60 + 30; // 8:30 AM
-    
+
     if (timeInMinutes <= onTimeThreshold) {
       return 'Present';
     } else if (timeInMinutes <= lateThreshold) {
@@ -205,11 +231,10 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
   // Helper function to normalize date strings for comparison
   const normalizeDateString = (dateStr: string) => {
     if (!dateStr) return '';
-    
+
     // Remove extra spaces and normalize
     return dateStr.trim().toLowerCase();
   };
-
 
   // Alternative date formats to try
   const getAlternativeDateFormats = (date: Date) => {
@@ -218,22 +243,24 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
       date.toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'long',
-        year: 'numeric'
+        year: 'numeric',
       }),
       // Indonesian short format
       date.toLocaleDateString('id-ID', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
       }),
       // ISO date format
       date.toISOString().split('T')[0],
       // Simple format
-      `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`,
+      `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1)
+        .toString()
+        .padStart(2, '0')}-${date.getFullYear()}`,
       // Alternative Indonesian format
       date.toLocaleDateString('id-ID'),
     ];
-    
+
     return formats;
   };
 
@@ -268,33 +295,41 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
       const possibleDateFormats = getAlternativeDateFormats(selectedDate);
       console.log('Selected date:', selectedDate);
       console.log('Possible date formats to match:', possibleDateFormats);
-      
+
       // Log some sample record dates for debugging
       const sampleDates = filtered.slice(0, 5).map(record => record.tanggal);
       console.log('Sample record dates:', sampleDates);
-      
+
       filtered = filtered.filter((record: AttendanceRecord) => {
         const recordDate = record.tanggal || '';
         const normalizedRecordDate = normalizeDateString(recordDate);
-        
+
         // Try to match against any of the possible date formats
         const matches = possibleDateFormats.some(format => {
           const normalizedFormat = normalizeDateString(format);
           return normalizedRecordDate === normalizedFormat;
         });
-        
+
         // Also try timestamp-based comparison if available
         if (!matches && record.timestamp) {
           const recordDateFromTimestamp = new Date(record.timestamp);
-          const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-          const recordDateOnly = new Date(recordDateFromTimestamp.getFullYear(), recordDateFromTimestamp.getMonth(), recordDateFromTimestamp.getDate());
-          
+          const selectedDateOnly = new Date(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate(),
+          );
+          const recordDateOnly = new Date(
+            recordDateFromTimestamp.getFullYear(),
+            recordDateFromTimestamp.getMonth(),
+            recordDateFromTimestamp.getDate(),
+          );
+
           return selectedDateOnly.getTime() === recordDateOnly.getTime();
         }
-        
+
         return matches;
       });
-      
+
       console.log('After date filter:', filtered.length);
     }
 
@@ -352,12 +387,16 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
             userData={usersData[record.userId]}
             onPress={() => {
               console.log('Attendance card pressed:', record);
+              console.log(
+                `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+              );
               // Navigate to user detail with attendance data
               navigation.navigate('UserDetail', {
                 userId: record.userId,
                 name: usersData[record.userId]?.fullName || 'Unknown User',
                 nip: usersData[record.userId]?.NIP || 'Not specified',
-                department: usersData[record.userId]?.department || 'Not specified',
+                department:
+                  usersData[record.userId]?.department || 'Not specified',
                 email: usersData[record.userId]?.email || 'No email',
                 attendanceData: record,
                 userData: usersData[record.userId],
@@ -377,7 +416,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
         <View style={styles.textinput}>
           {/* Department and Name Search Row */}
           <TextInputAdmin
-            style={{ marginBottom: 15 }}
+            style={{marginBottom: 15}}
             text="Department"
             leftValue={selectedDept}
             onLeftPress={() => setShowDropdown(!showDropdown)}
@@ -396,14 +435,14 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
                   key={index}
                   style={[
                     styles.dropdownItem,
-                    index === departments.length - 1 && { borderBottomWidth: 0 }
+                    index === departments.length - 1 && {borderBottomWidth: 0},
                   ]}
-                  onPress={() => handleSelectDept(dept)}
-                >
-                  <Text style={[
-                    styles.dropdownText,
-                    selectedDept === dept && styles.selectedDropdownText
-                  ]}>
+                  onPress={() => handleSelectDept(dept)}>
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      selectedDept === dept && styles.selectedDropdownText,
+                    ]}>
                     {dept}
                   </Text>
                 </TouchableOpacity>
@@ -413,7 +452,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
 
           {/* Date and Session Filter Row using TextInputAdmin */}
           <TextInputAdmin
-            style={{ marginBottom: 15 }}
+            style={{marginBottom: 15}}
             text={formatDateDisplay(selectedDate)}
             leftValue={formatDateDisplay(selectedDate)}
             onLeftPress={() => setShowDatePicker(true)}
@@ -431,8 +470,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
             <View style={styles.clearDateContainer}>
               <TouchableOpacity
                 style={styles.clearButton}
-                onPress={clearDateFilter}
-              >
+                onPress={clearDateFilter}>
                 <Text style={styles.clearButtonText}>Clear Date Filter</Text>
               </TouchableOpacity>
             </View>
@@ -446,14 +484,17 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
                   key={index}
                   style={[
                     styles.dropdownItem,
-                    index === sessionStatuses.length - 1 && { borderBottomWidth: 0 }
+                    index === sessionStatuses.length - 1 && {
+                      borderBottomWidth: 0,
+                    },
                   ]}
-                  onPress={() => handleSelectSession(session)}
-                >
-                  <Text style={[
-                    styles.dropdownText,
-                    selectedSession === session && styles.selectedDropdownText
-                  ]}>
+                  onPress={() => handleSelectSession(session)}>
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      selectedSession === session &&
+                        styles.selectedDropdownText,
+                    ]}>
                     {session}
                   </Text>
                 </TouchableOpacity>
@@ -471,25 +512,26 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
               maximumDate={new Date()}
             />
           )}
+          {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
 
           {/* Enhanced Date Selection Modal with Quick Options */}
           <Modal
             visible={showDatePicker && Platform.OS === 'ios'}
             transparent={true}
             animationType="slide"
-            onRequestClose={() => setShowDatePicker(false)}
-          >
+            onRequestClose={() => setShowDatePicker(false)}>
             <View style={styles.modalOverlay}>
               <View style={styles.datePickerContainer}>
                 <Text style={styles.datePickerTitle}>Select Date</Text>
-                <Text style={styles.datePickerSubtitle}>Choose a date to filter attendance records</Text>
-                
+                <Text style={styles.datePickerSubtitle}>
+                  Choose a date to filter attendance records
+                </Text>
+
                 {/* Quick Date Options */}
                 <View style={styles.quickDateOptions}>
                   <TouchableOpacity
                     style={styles.quickDateButton}
-                    onPress={() => handleQuickDateSelect(new Date())}
-                  >
+                    onPress={() => handleQuickDateSelect(new Date())}>
                     <Text style={styles.quickDateText}>Today</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -498,8 +540,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
                       const yesterday = new Date();
                       yesterday.setDate(yesterday.getDate() - 1);
                       handleQuickDateSelect(yesterday);
-                    }}
-                  >
+                    }}>
                     <Text style={styles.quickDateText}>Yesterday</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -508,8 +549,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
                       const lastWeek = new Date();
                       lastWeek.setDate(lastWeek.getDate() - 7);
                       handleQuickDateSelect(lastWeek);
-                    }}
-                  >
+                    }}>
                     <Text style={styles.quickDateText}>Last Week</Text>
                   </TouchableOpacity>
                 </View>
@@ -531,8 +571,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
                 <View style={styles.datePickerButtons}>
                   <TouchableOpacity
                     style={styles.cancelButton}
-                    onPress={() => setShowDatePicker(false)}
-                  >
+                    onPress={() => setShowDatePicker(false)}>
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -540,8 +579,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
                     onPress={() => {
                       setSelectedDate(datePickerDate);
                       setShowDatePicker(false);
-                    }}
-                  >
+                    }}>
                     <Text style={styles.confirmButtonText}>Confirm</Text>
                   </TouchableOpacity>
                 </View>
@@ -550,9 +588,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
           </Modal>
         </View>
 
-        <View style={styles.card}>
-          {renderAttendanceCards()}
-        </View>
+        <View style={styles.card}>{renderAttendanceCards()}</View>
       </ScrollView>
 
       <ButtonNavAdmin navigation={navigation} />
@@ -564,7 +600,7 @@ const Lists = ({ navigation }: { navigation: NavigationProps }) => {
 const AttendanceCard = ({
   attendanceRecord,
   userData,
-  onPress
+  onPress,
 }: {
   attendanceRecord: AttendanceRecord;
   userData: UserData;
@@ -576,16 +612,18 @@ const AttendanceCard = ({
     if (record.status) {
       return record.status;
     }
-    
+
     // Fallback to time-based calculation if no status field exists
     const waktu = record.waktu;
     if (!waktu) return 'Unexcused';
-    
-    const [hours, minutes] = waktu.split(':').map((num: string) => parseInt(num));
+
+    const [hours, minutes] = waktu
+      .split(':')
+      .map((num: string) => parseInt(num));
     const timeInMinutes = hours * 60 + minutes;
     const onTimeThreshold = 8 * 60; // 8:00 AM
     const lateThreshold = 8 * 60 + 30; // 8:30 AM
-    
+
     if (timeInMinutes <= onTimeThreshold) {
       return 'Present';
     } else if (timeInMinutes <= lateThreshold) {
@@ -633,9 +671,7 @@ const AttendanceCard = ({
   return (
     <TouchableOpacity style={styles.attendanceCard} onPress={onPress}>
       <View style={[styles.statusBadge, statusStyle.badge]}>
-        <Text style={[styles.statusText, statusStyle.text]}>
-          {status}
-        </Text>
+        <Text style={[styles.statusText, statusStyle.text]}>{status}</Text>
       </View>
 
       <View style={styles.detailsContainer}>
@@ -649,9 +685,7 @@ const AttendanceCard = ({
 
           <View style={styles.row}>
             <Text style={styles.label}>NIP:</Text>
-            <Text style={styles.value}>
-              {userData?.NIP || 'Not specified'}
-            </Text>
+            <Text style={styles.value}>{userData?.NIP || 'Not specified'}</Text>
           </View>
 
           <View style={styles.row}>
@@ -681,7 +715,11 @@ const AttendanceCard = ({
           {attendanceRecord.confirmed && (
             <View style={styles.row}>
               <Text style={styles.label}>Confirmed:</Text>
-              <Text style={[styles.value, {color: '#2B6000', fontFamily: 'Poppins-SemiBold'}]}>
+              <Text
+                style={[
+                  styles.value,
+                  {color: '#2B6000', fontFamily: 'Poppins-SemiBold'},
+                ]}>
                 ✓ Yes
               </Text>
             </View>
@@ -710,9 +748,7 @@ const AttendanceCard = ({
             />
           ) : (
             <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderText}>
-                No Photo
-              </Text>
+              <Text style={styles.placeholderText}>No Photo</Text>
             </View>
           )}
         </View>
@@ -751,7 +787,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
   },
   dropdownItem: {
@@ -917,7 +953,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
   },
   // Date picker modal styles
@@ -935,7 +971,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
     elevation: 5,
   },

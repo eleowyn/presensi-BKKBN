@@ -1,7 +1,16 @@
-import { SafeAreaView, ScrollView, StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
-import React, { useState, useEffect } from 'react';
-import { ButtonNavAdmin, Header } from '../../components';
-import { getDatabase, ref, onValue } from 'firebase/database';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {ButtonNavAdmin, Header} from '../../components';
+import {getDatabase, ref, onValue} from 'firebase/database';
 
 interface UserData {
   id: string;
@@ -30,11 +39,13 @@ interface AttendanceRecord {
   confirmed?: boolean;
 }
 
-const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => {
-  const { userId, name, nip, department, email } = route.params || {};
-  
+const UserProfile = ({route, navigation}: {route: any; navigation: any}) => {
+  const {userId, name, nip, department, email} = route.params || {};
+
   const [userInfo, setUserInfo] = useState<UserData | null>(null);
-  const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
+  const [attendanceHistory, setAttendanceHistory] = useState<
+    AttendanceRecord[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,16 +58,16 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
     }
 
     const db = getDatabase();
-    
+
     // Fetch user information
     const userRef = ref(db, `users/${userId}`);
-    const userUnsubscribe = onValue(userRef, (snapshot) => {
+    const userUnsubscribe = onValue(userRef, snapshot => {
       try {
         if (snapshot.exists()) {
           const userData = snapshot.val();
           setUserInfo({
             id: userId,
-            ...userData
+            ...userData,
           });
         } else {
           // Fallback to route params if user not found in database
@@ -65,7 +76,7 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
             fullName: name,
             NIP: nip,
             department: department,
-            email: email
+            email: email,
           });
         }
       } catch (error) {
@@ -76,19 +87,19 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
 
     // Fetch attendance history
     const attendanceRef = ref(db, `attendance/${userId}`);
-    const attendanceUnsubscribe = onValue(attendanceRef, (snapshot) => {
+    const attendanceUnsubscribe = onValue(attendanceRef, snapshot => {
       try {
         if (snapshot.exists()) {
           const attendanceData = snapshot.val();
           const attendanceList: AttendanceRecord[] = [];
-          
+
           // Handle both array and object formats
           if (Array.isArray(attendanceData)) {
             attendanceData.forEach((record, index) => {
               if (record && record.timestamp) {
                 attendanceList.push({
                   id: index.toString(),
-                  ...record
+                  ...record,
                 });
               }
             });
@@ -98,16 +109,22 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
               if (record && record.timestamp) {
                 attendanceList.push({
                   id: key,
-                  ...record
+                  ...record,
                 });
               }
             });
           }
-          
+
           // Sort by timestamp (newest first)
-          attendanceList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-          
-          console.log('Fetched attendance history:', attendanceList.length, 'records');
+          attendanceList.sort(
+            (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
+          );
+
+          console.log(
+            'Fetched attendance history:',
+            attendanceList.length,
+            'records',
+          );
           setAttendanceHistory(attendanceList);
         } else {
           setAttendanceHistory([]);
@@ -132,16 +149,16 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
     if (record.status) {
       return record.status;
     }
-    
+
     // Fallback to time-based calculation if no status field exists
     const waktu = record.waktu;
     if (!waktu) return 'Unexcused';
-    
+
     const [hours, minutes] = waktu.split(':').map(num => parseInt(num));
     const timeInMinutes = hours * 60 + minutes;
     const onTimeThreshold = 8 * 60; // 8:00 AM
     const lateThreshold = 8 * 60 + 30; // 8:30 AM
-    
+
     if (timeInMinutes <= onTimeThreshold) {
       return 'Present';
     } else if (timeInMinutes <= lateThreshold) {
@@ -156,28 +173,28 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
     switch (status) {
       case 'Present':
         return {
-          badge: { backgroundColor: '#B4FFB1' },
-          text: { color: '#2B6000' },
+          badge: {backgroundColor: '#B4FFB1'},
+          text: {color: '#2B6000'},
         };
       case 'Late':
         return {
-          badge: { backgroundColor: '#FFF3B1' },
-          text: { color: '#8A6E00' },
+          badge: {backgroundColor: '#FFF3B1'},
+          text: {color: '#8A6E00'},
         };
       case 'Excused':
         return {
-          badge: { backgroundColor: '#B1D6FF' },
-          text: { color: '#004E8A' },
+          badge: {backgroundColor: '#B1D6FF'},
+          text: {color: '#004E8A'},
         };
       case 'Unexcused':
         return {
-          badge: { backgroundColor: '#FFB1B1' },
-          text: { color: '#8A0000' },
+          badge: {backgroundColor: '#FFB1B1'},
+          text: {color: '#8A0000'},
         };
       default:
         return {
-          badge: { backgroundColor: '#CCCCCC' },
-          text: { color: '#333333' },
+          badge: {backgroundColor: '#CCCCCC'},
+          text: {color: '#333333'},
         };
     }
   };
@@ -189,7 +206,7 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
     return date.toLocaleDateString('id-ID', {
       day: '2-digit',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -209,10 +226,12 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
           <View style={styles.profileImageContainer}>
             {userInfo.profilePictureBase64 ? (
               <Image
-                source={{ uri: `data:image/jpeg;base64,${userInfo.profilePictureBase64}` }}
+                source={{
+                  uri: `data:image/jpeg;base64,${userInfo.profilePictureBase64}`,
+                }}
                 style={styles.profileImage}
                 resizeMode="cover"
-                onError={(err) => {
+                onError={err => {
                   console.error('Profile image load error:', err);
                 }}
               />
@@ -225,31 +244,37 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
             )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.userName}>{userInfo.fullName || 'Unknown User'}</Text>
+            <Text style={styles.userName}>
+              {userInfo.fullName || 'Unknown User'}
+            </Text>
             <Text style={styles.userRole}>{userInfo.role || 'Employee'}</Text>
           </View>
         </View>
 
         <View style={styles.userDetailsCard}>
           <Text style={styles.cardTitle}>User Information</Text>
-          
+
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>NIP:</Text>
-            <Text style={styles.detailValue}>{userInfo.NIP || 'Not specified'}</Text>
+            <Text style={styles.detailValue}>
+              {userInfo.NIP || 'Not specified'}
+            </Text>
           </View>
-          
+
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Department:</Text>
             <Text style={styles.detailValue} numberOfLines={2}>
               {userInfo.department || 'Not specified'}
             </Text>
           </View>
-          
+
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Email:</Text>
-            <Text style={styles.detailValue}>{userInfo.email || 'No email'}</Text>
+            <Text style={styles.detailValue}>
+              {userInfo.email || 'No email'}
+            </Text>
           </View>
-          
+
           {userInfo.startDate && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Start Date:</Text>
@@ -272,7 +297,7 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
     }
 
     // Group attendance by date
-    const groupedAttendance: { [key: string]: AttendanceRecord[] } = {};
+    const groupedAttendance: {[key: string]: AttendanceRecord[]} = {};
     attendanceHistory.forEach(record => {
       const date = record.tanggal || formatDate(record.timestamp || 0);
       if (!groupedAttendance[date]) {
@@ -294,16 +319,21 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
 
     return (
       <View style={styles.attendanceSection}>
-        <Text style={styles.sectionTitle}>Attendance History ({attendanceHistory.length} records)</Text>
-        
+        <Text style={styles.sectionTitle}>
+          Attendance History ({attendanceHistory.length} records)
+        </Text>
+
         {sortedDates.map(date => (
           <View key={date} style={styles.dateGroup}>
             <Text style={styles.dateHeader}>{date}</Text>
-            {groupedAttendance[date].map((record) => (
+            {groupedAttendance[date].map(record => (
               <AttendanceCard
                 key={record.id}
                 record={record}
                 onPress={() => {
+                  console.log(
+                    `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+                  );
                   // Navigate to attendance detail if needed
                   navigation.navigate('UserDetail', {
                     userId: userId,
@@ -325,7 +355,13 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
   };
 
   // Attendance card component
-  const AttendanceCard = ({ record, onPress }: { record: AttendanceRecord; onPress: () => void }) => {
+  const AttendanceCard = ({
+    record,
+    onPress,
+  }: {
+    record: AttendanceRecord;
+    onPress: () => void;
+  }) => {
     const status = getAttendanceStatus(record);
     const statusStyle = getStatusStyle(status);
 
@@ -333,9 +369,7 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
       <TouchableOpacity style={styles.attendanceCard} onPress={onPress}>
         <View style={styles.cardHeader}>
           <View style={[styles.statusBadge, statusStyle.badge]}>
-            <Text style={[styles.statusText, statusStyle.text]}>
-              {status}
-            </Text>
+            <Text style={[styles.statusText, statusStyle.text]}>{status}</Text>
           </View>
           {record.confirmed && (
             <View style={styles.confirmedBadge}>
@@ -348,13 +382,18 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
           <View style={styles.cardTextSection}>
             <View style={styles.cardRow}>
               <Text style={styles.cardLabel}>Time:</Text>
-              <Text style={styles.cardValue}>{formatTime(record.waktu || '')}</Text>
+              <Text style={styles.cardValue}>
+                {formatTime(record.waktu || '')}
+              </Text>
             </View>
-
+            {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
             {record.location?.address && (
               <View style={styles.cardRow}>
                 <Text style={styles.cardLabel}>Location:</Text>
-                <Text style={styles.cardValue} numberOfLines={2} ellipsizeMode="tail">
+                <Text
+                  style={styles.cardValue}
+                  numberOfLines={2}
+                  ellipsizeMode="tail">
                   {record.location.address}
                 </Text>
               </View>
@@ -364,10 +403,10 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
           <View style={styles.cardImageSection}>
             {record.photo || record.photoBase64 ? (
               <Image
-                source={{ uri: record.photo || record.photoBase64 }}
+                source={{uri: record.photo || record.photoBase64}}
                 style={styles.attendanceImage}
                 resizeMode="cover"
-                onError={(err) => {
+                onError={err => {
                   console.error('Attendance image load error:', err);
                 }}
               />
@@ -404,13 +443,12 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
           <Header text="User Profile" />
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton} 
+            <TouchableOpacity
+              style={styles.retryButton}
               onPress={() => {
                 setError(null);
                 setLoading(true);
-              }}
-            >
+              }}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
@@ -423,11 +461,10 @@ const UserProfile = ({ route, navigation }: { route: any; navigation: any }) => 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentWrapper}>
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+          showsVerticalScrollIndicator={false}>
           <Header text="User Profile" />
           {renderUserProfile()}
           {renderAttendanceHistory()}
@@ -498,7 +535,7 @@ const styles = StyleSheet.create({
     padding: 20,
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
     elevation: 3,
   },
@@ -588,7 +625,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
     elevation: 3,
   },
@@ -619,7 +656,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowRadius: 4,
     elevation: 3,
     borderColor: '#E8E8E8',

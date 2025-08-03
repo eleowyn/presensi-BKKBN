@@ -18,7 +18,11 @@ const SplashScreen = () => {
       duration: 1000,
       useNativeDriver: true,
     }).start(() => {
-      // After fade in, wait 500ms then slide first logo to the left
+      // After fade in, wait 500ms then slide first logo to the
+      console.log(
+        `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+      );
+
       setTimeout(() => {
         Animated.timing(slideAnim1, {
           toValue: -75, // Move left by 75 pixels (half logo width + some spacing)
@@ -67,6 +71,7 @@ const SplashScreen = () => {
         ]}>
         <LogoBkkbn style={styles.logo} />
       </Animated.View>
+      {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
     </View>
   );
 };

@@ -160,6 +160,9 @@ const Home = ({navigation}) => {
                   isDateInCurrentWeek(recordDate, startOfWeek, endOfWeek),
                 );
                 console.log('======================================');
+                console.log(
+                  `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+                );
 
                 const status = record.status?.toLowerCase();
 
@@ -248,6 +251,8 @@ const Home = ({navigation}) => {
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0000ff" />
         <Text style={styles.loadingText}>Loading data...</Text>
+
+        {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
       </SafeAreaView>
     );
   }

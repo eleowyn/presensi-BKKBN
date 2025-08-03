@@ -29,7 +29,8 @@ interface UserData {
 const DashboardAdmin = ({navigation}: {navigation: any}) => {
   console.log('DASHBOARD NAVIGATION:', navigation);
 
-  const [selectedDepartment, setSelectedDepartment] = useState('Select Department');
+  const [selectedDepartment, setSelectedDepartment] =
+    useState('Select Department');
   const [searchName, setSearchName] = useState('');
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
   const [users, setUsers] = useState<UserData[]>([]);
@@ -56,20 +57,19 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
     'ZI WBK/WBBM DAN SPIP',
   ];
 
-
   // Fetch users data from Firebase
   useEffect(() => {
     const db = getDatabase();
     const usersRef = ref(db, 'users');
-    
-    const usersUnsubscribe = onValue(usersRef, (snapshot) => {
+
+    const usersUnsubscribe = onValue(usersRef, snapshot => {
       try {
         if (snapshot.exists()) {
           const userData = snapshot.val();
           const usersList = Object.keys(userData)
             .map(userId => ({
               id: userId,
-              ...userData[userId]
+              ...userData[userId],
             }))
             // Filter out admin users if needed
             .filter(user => user.role !== 'admin')
@@ -112,7 +112,10 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
     }
 
     // Filter by department
-    if (selectedDepartment !== 'Select Department' && selectedDepartment !== 'All Departments') {
+    if (
+      selectedDepartment !== 'Select Department' &&
+      selectedDepartment !== 'All Departments'
+    ) {
       filtered = filtered.filter(user => {
         const userDepartment = user.department || '';
         return userDepartment === selectedDepartment;
@@ -152,7 +155,7 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
               // Navigate back to login screen
               navigation.reset({
                 index: 0,
-                routes: [{ name: 'Login' }],
+                routes: [{name: 'Login'}],
               });
             } catch (error) {
               console.error('Logout error:', error);
@@ -202,12 +205,16 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
     return sortedLetters.map(letter => (
       <View key={letter} style={styles.letterGroup}>
         <Text style={styles.letterHeader}>{letter}</Text>
-        {groupedUsers[letter].map((user) => (
+        {groupedUsers[letter].map(user => (
           <UserCard
             key={user.id}
             user={user}
             onPress={() => {
               console.log('User card pressed:', user);
+
+              console.log(
+                `This app was created by Elshera A. E. Dahlan & Lana L. L. Londah`,
+              );
               navigation.navigate('UserProfile', {
                 userId: user.id,
                 name: user.fullName || 'Unknown User',
@@ -228,9 +235,12 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}>
+          {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
           <View style={styles.headerWithLogout}>
             <Header text="Admin" />
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={styles.logoutButton}>
               <Text style={styles.logoutButtonText}>Logout</Text>
             </TouchableOpacity>
           </View>
@@ -269,9 +279,7 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
             )}
           </View>
 
-          <View>
-            {renderUserCards()}
-          </View>
+          <View>{renderUserCards()}</View>
         </ScrollView>
         <ButtonNavAdmin navigation={navigation} />
       </View>
@@ -294,9 +302,7 @@ const UserCard = ({user, onPress}: {user: UserData; onPress: () => void}) => {
 
           <View style={styles.row}>
             <Text style={styles.label}>NIP:</Text>
-            <Text style={styles.value}>
-              {user.NIP || 'Not specified'}
-            </Text>
+            <Text style={styles.value}>{user.NIP || 'Not specified'}</Text>
           </View>
 
           <View style={styles.row}>
@@ -316,9 +322,7 @@ const UserCard = ({user, onPress}: {user: UserData; onPress: () => void}) => {
           {user.startDate && (
             <View style={styles.row}>
               <Text style={styles.label}>Start Date:</Text>
-              <Text style={styles.value}>
-                {user.startDate}
-              </Text>
+              <Text style={styles.value}>{user.startDate}</Text>
             </View>
           )}
         </View>
@@ -327,10 +331,12 @@ const UserCard = ({user, onPress}: {user: UserData; onPress: () => void}) => {
         <View style={styles.imageBox}>
           {user.profilePictureBase64 ? (
             <Image
-              source={{uri: `data:image/jpeg;base64,${user.profilePictureBase64}`}}
+              source={{
+                uri: `data:image/jpeg;base64,${user.profilePictureBase64}`,
+              }}
               style={styles.profileImage}
               resizeMode="cover"
-              onError={(err) => {
+              onError={err => {
                 console.error('Profile image load error:', err);
               }}
             />
