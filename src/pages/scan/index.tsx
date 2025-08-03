@@ -21,6 +21,14 @@ import axios from 'axios';
 import {getDatabase, ref, push} from 'firebase/database';
 import {getAuth} from 'firebase/auth'; // Add this import
 import app from '../../config/Firebase'; // Adjust path as needed
+import DocumentPicker from 'react-native-document-picker';
+import {
+  validateFile,
+  uploadFileToCloudinary,
+  getFileDisplayInfo,
+  showUploadSuccessMessage,
+  showUploadErrorMessage,
+} from '../../utils/fileUpload';
 
 const Scan = ({navigation}: {navigation: any}) => {
   const [tanggal, setTanggal] = useState('');
@@ -50,6 +58,11 @@ const Scan = ({navigation}: {navigation: any}) => {
   const [keterangan, setKeterangan] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // File upload states
+  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
 
   // Get current user function
   const getCurrentUser = () => {
@@ -519,6 +532,58 @@ const Scan = ({navigation}: {navigation: any}) => {
     await fetchDateTimeAndLocation();
   };
 
+  // File upload handler
+  const handleFileUpload = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [
+          DocumentPicker.types.pdf,
+          DocumentPicker.types.doc,
+          DocumentPicker.types.docx,
+        ],
+        allowMultiSelection: false,
+      });
+
+      const file = result[0];
+      
+      // Validate file
+      const validation = validateFile(file);
+      if (!validation.isValid) {
+        showUploadErrorMessage(validation.error || 'Invalid file');
+        return;
+      }
+
+      setSelectedFile(file);
+      setIsUploadingFile(true);
+
+      try {
+        // Upload to Cloudinary
+        const fileUrl = await uploadFileToCloudinary(file);
+        setUploadedFileUrl(fileUrl);
+        
+        showUploadSuccessMessage(file.name || 'File');
+      } catch (uploadError: any) {
+        showUploadErrorMessage(uploadError.message);
+        setSelectedFile(null);
+      } finally {
+        setIsUploadingFile(false);
+      }
+    } catch (error: any) {
+      if (DocumentPicker.isCancel(error)) {
+        // User cancelled the picker
+        return;
+      }
+      
+      showUploadErrorMessage('Failed to select file: ' + error.message);
+    }
+  };
+
+  // Remove uploaded file
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setUploadedFileUrl(null);
+  };
+
   // Updated confirmation handler with Firebase Realtime Database and user information
   const handleConfirmation = async () => {
     if (isSubmitting) return; // Prevent multiple submissions
@@ -583,6 +648,16 @@ const Scan = ({navigation}: {navigation: any}) => {
         status: attendanceStatus, // Add attendance status based on time
         timestamp: Date.now(), // Add timestamp for sorting
         createdAt: new Date().toISOString(), // Human readable timestamp
+        // File upload data (optional)
+        ...(uploadedFileUrl && selectedFile && {
+          uploadedFile: {
+            url: uploadedFileUrl,
+            name: selectedFile.name,
+            type: selectedFile.type,
+            size: selectedFile.size,
+            uploadedAt: new Date().toISOString(),
+          },
+        }),
         // Additional metadata
         deviceInfo: {
           platform: Platform.OS,
@@ -754,6 +829,54 @@ const Scan = ({navigation}: {navigation: any}) => {
               numberOfLines={4}
               textAlignVertical="top"
             />
+          </View>
+
+          {/* File Upload Section */}
+          <View style={styles.fileUploadSection}>
+            <Text style={styles.sectionLabel}>Upload File (Opsional)</Text>
+            <Text style={styles.fileUploadSubtitle}>
+              Upload dokumen pendukung (PDF, DOC, DOCX - Max 5MB)
+            </Text>
+            
+            {selectedFile ? (
+              <View style={styles.selectedFileContainer}>
+                <View style={styles.fileInfo}>
+                  <Text style={styles.fileName}>{selectedFile.name}</Text>
+                  <Text style={styles.fileSize}>
+                    {getFileDisplayInfo(selectedFile).size} • {getFileDisplayInfo(selectedFile).extension}
+                  </Text>
+                  {uploadedFileUrl && (
+                    <Text style={styles.uploadStatus}>✓ Uploaded to cloud</Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  onPress={handleRemoveFile}
+                  style={styles.removeFileButton}
+                  disabled={isUploadingFile}>
+                  <Text style={styles.removeFileText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleFileUpload}
+                style={styles.fileUploadButton}
+                disabled={isUploadingFile}>
+                {isUploadingFile ? (
+                  <View style={styles.uploadingContainer}>
+                    <ActivityIndicator size="small" color="#0066CC" />
+                    <Text style={styles.uploadingText}>Uploading...</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={styles.fileUploadIcon}>📎</Text>
+                    <Text style={styles.fileUploadText}>Pilih File</Text>
+                    <Text style={styles.fileUploadSubtext}>
+                      Tap untuk memilih dokumen
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.buttonContainer}>
@@ -934,6 +1057,90 @@ const styles = StyleSheet.create({
     minHeight: 100,
     fontSize: 14,
     marginTop: 5,
+  },
+  // File upload styles
+  fileUploadSection: {
+    marginTop: 20,
+  },
+  fileUploadSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5,
+    marginBottom: 15,
+  },
+  selectedFileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  fileSize: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  uploadStatus: {
+    fontSize: 12,
+    color: '#28a745',
+    fontWeight: '500',
+  },
+  removeFileButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#dc3545',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  removeFileText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fileUploadButton: {
+    borderWidth: 2,
+    borderColor: '#0066CC',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#f8f9ff',
+  },
+  uploadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  uploadingText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#0066CC',
+  },
+  fileUploadIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  fileUploadText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0066CC',
+    marginBottom: 4,
+  },
+  fileUploadSubtext: {
+    fontSize: 12,
+    color: '#666',
   },
 });
 
