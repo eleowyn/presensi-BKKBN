@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '../config/Cloudinary';
+import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig, transformCloudinaryUrl, fixCloudinaryUrl } from '../config/Cloudinary';
 import { showMessage } from 'react-native-flash-message';
 
 // Supported file types
@@ -77,8 +77,12 @@ export const uploadFileToCloudinary = async (file: any): Promise<string> => {
     });
 
     if (response.data && response.data.secure_url) {
-      console.log('File uploaded successfully:', response.data.secure_url);
-      return response.data.secure_url;
+      // Transform the URL based on file type to ensure correct delivery
+      const transformedUrl = transformCloudinaryUrl(response.data.secure_url, file.type);
+      console.log('File uploaded successfully:', transformedUrl);
+      console.log('Original URL:', response.data.secure_url);
+      console.log('Transformed URL:', transformedUrl);
+      return transformedUrl;
     } else {
       throw new Error('Upload failed: No URL returned from Cloudinary');
     }
@@ -133,4 +137,36 @@ export const showUploadErrorMessage = (error: string) => {
     type: 'danger',
     duration: 5000,
   });
+};
+
+// Fix existing Cloudinary URLs that might be using wrong delivery type
+// This is useful for URLs that were stored before the fix was implemented
+export const fixExistingCloudinaryUrl = (url: string, fileType: string): string => {
+  return fixCloudinaryUrl(url, fileType);
+};
+
+// Helper function to determine file type from URL or filename
+export const getFileTypeFromUrl = (url: string): string => {
+  if (!url) return 'unknown';
+  
+  // Extract file extension from URL
+  const urlParts = url.split('.');
+  const extension = urlParts[urlParts.length - 1]?.toLowerCase().split('?')[0];
+  
+  switch (extension) {
+    case 'pdf':
+      return 'application/pdf';
+    case 'docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'doc':
+      return 'application/msword';
+    default:
+      return 'unknown';
+  }
+};
+
+// Utility to fix any Cloudinary URL based on its file extension
+export const autoFixCloudinaryUrl = (url: string): string => {
+  const fileType = getFileTypeFromUrl(url);
+  return fixExistingCloudinaryUrl(url, fileType);
 };

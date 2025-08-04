@@ -19,14 +19,14 @@ import {showMessage} from 'react-native-flash-message';
 import Geolocation from 'react-native-geolocation-service';
 import axios from 'axios';
 import {getDatabase, ref, push} from 'firebase/database';
-import {getAuth} from 'firebase/auth'; // Add this import
-import app from '../../config/Firebase'; // Adjust path as needed
+import {getAuth} from 'firebase/auth';
+import app from '../../config/Firebase';
 import DocumentPicker from 'react-native-document-picker';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import {
   validateFile,
   uploadFileToCloudinary,
   getFileDisplayInfo,
-  showUploadSuccessMessage,
   showUploadErrorMessage,
 } from '../../utils/fileUpload';
 
@@ -61,8 +61,8 @@ const Scan = ({navigation}: {navigation: any}) => {
   
   // File upload states
   const [selectedFile, setSelectedFile] = useState<any>(null);
-  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
+  const [localFilePath, setLocalFilePath] = useState<string | null>(null);
 
   // Get current user function
   const getCurrentUser = () => {
@@ -190,7 +190,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       // Process Nominatim result
       if (results[0].status === 'fulfilled') {
         const data = results[0].value.data;
-        const {address, display_name, namedetails} = data;
+        const {address, namedetails} = data;
 
         // Extract place name from various sources
         placeName =
@@ -317,14 +317,15 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       while (
         attempts < maxAttempts &&
-        (!bestPosition || bestPosition.coords.accuracy > 10)
+        (!bestPosition || (bestPosition as any).coords.accuracy > 10)
       ) {
         attempts++;
 
         try {
           console.log(`Location attempt ${attempts}/${maxAttempts}`);
 
-          const position = await new Promise((resolve, reject) => {
+          const position = await new Promise<any>((resolve, reject) => {
+            const startTime = Date.now();
             const watchId = Geolocation.watchPosition(
               pos => {
                 // Accept position if accuracy is very good (< 10m) or after timeout
@@ -342,24 +343,18 @@ const Scan = ({navigation}: {navigation: any}) => {
               },
               {
                 enableHighAccuracy: true,
-                timeout: 20000,
-                maximumAge: 0, // Always get fresh location
                 distanceFilter: 0, // Get all location updates
-                interval: 1000, // Check every second
-                fastestInterval: 500, // Fastest update rate
                 forceRequestLocation: true,
                 showLocationDialog: true, // Android: Show system location dialog
                 forceLocationManager: true, // Android: Use LocationManager instead of FusedLocationProvider
               },
             );
-
-            const startTime = Date.now();
           });
 
           // Keep the most accurate position
           if (
             !bestPosition ||
-            position.coords.accuracy < bestPosition.coords.accuracy
+            position.coords.accuracy < (bestPosition as any).coords.accuracy
           ) {
             bestPosition = position;
           }
@@ -376,21 +371,20 @@ const Scan = ({navigation}: {navigation: any}) => {
           if (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
-        } catch (attemptError) {
+        } catch (attemptError: any) {
           console.log(`Attempt ${attempts} failed:`, attemptError);
 
           // If this is the last attempt, try with fallback settings
           if (attempts === maxAttempts) {
             try {
-              bestPosition = await new Promise((resolve, reject) => {
+              bestPosition = await new Promise<any>((resolve, reject) => {
                 Geolocation.getCurrentPosition(resolve, reject, {
                   enableHighAccuracy: true,
                   timeout: 15000,
-                  maximumAge: 2000,
                   distanceFilter: 1,
                 });
               });
-            } catch (fallbackError) {
+            } catch (fallbackError: any) {
               console.log('Fallback also failed:', fallbackError);
             }
           }
@@ -401,7 +395,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         throw new Error(`Can't get location after multiple attempt`);
       }
 
-      const accuracy = bestPosition.coords.accuracy;
+      const accuracy = (bestPosition as any).coords.accuracy;
       let accuracyLevel;
       let isHighAccuracy;
 
@@ -421,13 +415,13 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       // Get enhanced location details
       const locationDetails = await getLocationDetails(
-        bestPosition.coords.latitude,
-        bestPosition.coords.longitude,
+        (bestPosition as any).coords.latitude,
+        (bestPosition as any).coords.longitude,
       );
 
       setLocation({
-        latitude: bestPosition.coords.latitude,
-        longitude: bestPosition.coords.longitude,
+        latitude: (bestPosition as any).coords.latitude,
+        longitude: (bestPosition as any).coords.longitude,
         accuracy: accuracy,
         address: locationDetails?.shortAddress || null,
         fullAddress: locationDetails?.fullAddress || null,
@@ -440,9 +434,9 @@ const Scan = ({navigation}: {navigation: any}) => {
         ? `${locationDetails.placeName} - ${locationDetails.shortAddress}`
         : locationDetails?.shortAddress ||
           'Koordinat: ' +
-            bestPosition.coords.latitude.toFixed(6) +
+            (bestPosition as any).coords.latitude.toFixed(6) +
             ', ' +
-            bestPosition.coords.longitude.toFixed(6);
+            (bestPosition as any).coords.longitude.toFixed(6);
 
       showMessage({
         message: `Lokasi Terdeteksi (${accuracyLevel})`,
@@ -452,7 +446,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         type: accuracy <= 15 ? 'success' : accuracy <= 150 ? 'warning' : 'info',
         duration: 5000,
       });
-    } catch (error) {
+    } catch (error: any) {
       setLocation(prev => ({
         ...prev,
         error: error.message,
@@ -500,7 +494,7 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       // Get location after photo is successfully taken
       await fetchDateTimeAndLocation();
-    } catch (error) {
+    } catch (error: any) {
       showMessage({
         message: 'Error',
         description: error.message,
@@ -532,7 +526,7 @@ const Scan = ({navigation}: {navigation: any}) => {
     await fetchDateTimeAndLocation();
   };
 
-  // File upload handler
+  // File selection handler - only store locally, don't upload to Cloudinary yet
   const handleFileUpload = async () => {
     try {
       const result = await DocumentPicker.pick({
@@ -553,20 +547,30 @@ const Scan = ({navigation}: {navigation: any}) => {
         return;
       }
 
-      setSelectedFile(file);
-      setIsUploadingFile(true);
-
+      // Copy file to local cache directory for better access
+      const fileName_clean = (file.name ?? 'file').replace(/[^a-zA-Z0-9.-]/g, '_');
+      const localPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${Date.now()}_${fileName_clean}`;
+      
       try {
-        // Upload to Cloudinary
-        const fileUrl = await uploadFileToCloudinary(file);
-        setUploadedFileUrl(fileUrl);
+        // Copy the file to cache directory
+        await ReactNativeBlobUtil.fs.cp(file.uri, localPath);
         
-        showUploadSuccessMessage(file.name || 'File');
-      } catch (uploadError: any) {
-        showUploadErrorMessage(uploadError.message);
-        setSelectedFile(null);
-      } finally {
-        setIsUploadingFile(false);
+        // Store file info and local path
+        setSelectedFile(file);
+        setLocalFilePath(localPath);
+        
+        showMessage({
+          message: 'File Selected',
+          description: `${file.name} ready for preview and upload`,
+          type: 'success',
+          duration: 2000,
+        });
+      } catch (copyError: any) {
+        showMessage({
+          message: 'File Error',
+          description: 'Failed to prepare file: ' + copyError.message,
+          type: 'danger',
+        });
       }
     } catch (error: any) {
       if (DocumentPicker.isCancel(error)) {
@@ -574,14 +578,72 @@ const Scan = ({navigation}: {navigation: any}) => {
         return;
       }
       
-      showUploadErrorMessage('Failed to select file: ' + error.message);
+      showMessage({
+        message: 'File Selection Failed',
+        description: 'Failed to select file: ' + error.message,
+        type: 'danger',
+      });
     }
   };
 
-  // Remove uploaded file
-  const handleRemoveFile = () => {
+  // Remove selected file
+  const handleRemoveFile = async () => {
+    // Clean up local file if it exists
+    if (localFilePath) {
+      try {
+        const exists = await ReactNativeBlobUtil.fs.exists(localFilePath);
+        if (exists) {
+          await ReactNativeBlobUtil.fs.unlink(localFilePath);
+        }
+      } catch (error) {
+        console.log('Error cleaning up local file:', error);
+      }
+    }
+    
     setSelectedFile(null);
+    setLocalFilePath(null);
     setUploadedFileUrl(null);
+  };
+
+  // Open file with app chooser - works with local file
+  const openFilePreview = async () => {
+    if (!selectedFile || !localFilePath) {
+      showMessage({
+        message: 'File Not Available',
+        description: 'Please select a file first',
+        type: 'warning',
+      });
+      return;
+    }
+
+    try {
+      // Check if local file still exists
+      const exists = await ReactNativeBlobUtil.fs.exists(localFilePath);
+      if (!exists) {
+        showMessage({
+          message: 'File Not Found',
+          description: 'Local file no longer exists. Please select the file again.',
+          type: 'warning',
+        });
+        handleRemoveFile();
+        return;
+      }
+
+      // Show app chooser directly
+      if (Platform.OS === 'android') {
+        await ReactNativeBlobUtil.android.actionViewIntent(localFilePath, selectedFile.type);
+      } else {
+        // For iOS, use the file URI
+        await Linking.openURL(`file://${localFilePath}`);
+      }
+    } catch (error: any) {
+      console.error('File open error:', error);
+      showMessage({
+        message: 'Cannot Open File',
+        description: 'Failed to open file with external app. Make sure you have a compatible app installed (PDF reader, Microsoft Office, etc.)',
+        type: 'danger',
+      });
+    }
   };
 
   // Updated confirmation handler with Firebase Realtime Database and user information
@@ -606,12 +668,35 @@ const Scan = ({navigation}: {navigation: any}) => {
       return;
     }
 
-
     setIsSubmitting(true);
 
     try {
       // Get current user information
       const currentUser = getCurrentUser();
+
+      // Upload file to Cloudinary if selected (only when confirming)
+      let fileUploadUrl = null;
+      if (selectedFile && localFilePath) {
+        try {
+          showMessage({
+            message: 'Uploading File...',
+            description: 'Please wait while we upload your document',
+            type: 'info',
+            duration: 2000,
+          });
+          
+          fileUploadUrl = await uploadFileToCloudinary(selectedFile);
+          setUploadedFileUrl(fileUploadUrl);
+        } catch (uploadError: any) {
+          console.error('File upload error:', uploadError);
+          showMessage({
+            message: 'File Upload Failed',
+            description: 'Continuing without file attachment: ' + uploadError.message,
+            type: 'warning',
+            duration: 3000,
+          });
+        }
+      }
 
       // Get Firebase Realtime Database instance
       const database = getDatabase(app);
@@ -648,11 +733,11 @@ const Scan = ({navigation}: {navigation: any}) => {
         status: attendanceStatus, // Add attendance status based on time
         timestamp: Date.now(), // Add timestamp for sorting
         createdAt: new Date().toISOString(), // Human readable timestamp
-        // File upload data (optional)
-        ...(uploadedFileUrl && selectedFile && {
+        // File upload data (optional) - now uploaded to Cloudinary
+        ...(fileUploadUrl && selectedFile && {
           uploadedFile: {
-            url: uploadedFileUrl,
-            name: selectedFile.name,
+            url: fileUploadUrl,
+            name: selectedFile.name ?? 'Unknown File',
             type: selectedFile.type,
             size: selectedFile.size,
             uploadedAt: new Date().toISOString(),
@@ -673,12 +758,24 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       console.log('Data successfully saved with ID:', newAttendanceRef.key);
 
+      // Clean up local file after successful submission
+      if (localFilePath) {
+        try {
+          const exists = await ReactNativeBlobUtil.fs.exists(localFilePath);
+          if (exists) {
+            await ReactNativeBlobUtil.fs.unlink(localFilePath);
+          }
+        } catch (cleanupError) {
+          console.log('Error cleaning up local file after submission:', cleanupError);
+        }
+      }
+
       // Show success message with status information
       showMessage({
         message: 'Success!',
         description: `Data is saved for ${
           currentUser.email || currentUser.displayName
-        }\nStatus: ${attendanceStatus}`,
+        }\nStatus: ${attendanceStatus}${fileUploadUrl ? '\nFile uploaded successfully' : ''}`,
         type: 'success',
         duration: 3000,
       });
@@ -687,7 +784,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       setTimeout(() => {
         navigation.navigate('Home');
       }, 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Firebase submission error:', error);
 
       let errorMessage = 'Something went wrong';
@@ -849,32 +946,28 @@ const Scan = ({navigation}: {navigation: any}) => {
                     <Text style={styles.uploadStatus}>✓ Uploaded to cloud</Text>
                   )}
                 </View>
-                <TouchableOpacity
-                  onPress={handleRemoveFile}
-                  style={styles.removeFileButton}
-                  disabled={isUploadingFile}>
-                  <Text style={styles.removeFileText}>✕</Text>
-                </TouchableOpacity>
+                <View style={styles.fileActions}>
+                  <TouchableOpacity
+                    onPress={openFilePreview}
+                    style={styles.previewFileButton}>
+                    <Text style={styles.previewFileText}>👁</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleRemoveFile}
+                    style={styles.removeFileButton}>
+                    <Text style={styles.removeFileText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (
               <TouchableOpacity
                 onPress={handleFileUpload}
-                style={styles.fileUploadButton}
-                disabled={isUploadingFile}>
-                {isUploadingFile ? (
-                  <View style={styles.uploadingContainer}>
-                    <ActivityIndicator size="small" color="#0066CC" />
-                    <Text style={styles.uploadingText}>Uploading...</Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={styles.fileUploadIcon}>📎</Text>
-                    <Text style={styles.fileUploadText}>Pilih File</Text>
-                    <Text style={styles.fileUploadSubtext}>
-                      Tap untuk memilih dokumen
-                    </Text>
-                  </>
-                )}
+                style={styles.fileUploadButton}>
+                <Text style={styles.fileUploadIcon}>📎</Text>
+                <Text style={styles.fileUploadText}>Pilih File</Text>
+                <Text style={styles.fileUploadSubtext}>
+                  Tap untuk memilih dokumen
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1096,6 +1189,24 @@ const styles = StyleSheet.create({
     color: '#28a745',
     fontWeight: '500',
   },
+  fileActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  previewFileButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#0066CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewFileText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   removeFileButton: {
     width: 30,
     height: 30,
@@ -1103,7 +1214,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#dc3545',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
   },
   removeFileText: {
     color: '#fff',
