@@ -6,7 +6,7 @@ const Activity = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <Header text="Riwayat" />
-      <Card />
+      <Card navigation={navigation} />
       <View style={{marginBottom: 150}}></View>
       <Buttonnavigation navigation={navigation} />
     </SafeAreaView>

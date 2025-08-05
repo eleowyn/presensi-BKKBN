@@ -1,4 +1,3 @@
-import {View} from 'react-native';
 import React from 'react';
 import {
   Account,
@@ -13,6 +12,8 @@ import {
   UserDetail,
   UserProfile,
   Report,
+  FilePreview,
+  ScanDetails,
 } from './src/pages';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
@@ -84,6 +85,16 @@ const App = () => {
         <Stack.Screen
           name="UserProfile"
           component={UserProfile}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="FilePreview"
+          component={FilePreview}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="ScanDetails"
+          component={ScanDetails}
           options={{headerShown: false}}
         />
       </Stack.Navigator>

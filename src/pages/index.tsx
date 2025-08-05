@@ -9,6 +9,8 @@ import Scan from './scan/pdf';
 import Lists from './adminList';
 import UserDetail from './userDetails';
 import UserProfile from './userProfile';
+import FilePreview from './filePreview';
+import ScanDetails from './scanDetails';
 import Report from './report';
 export {
   SplashScreen,
@@ -22,5 +24,7 @@ export {
   Lists,
   UserDetail,
   UserProfile,
+  FilePreview,
+  ScanDetails,
   Report,
 };

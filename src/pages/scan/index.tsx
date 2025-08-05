@@ -11,16 +11,26 @@ import {
   Platform,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import React, {useState} from 'react';
 import {Button, Buttonnavigation, Header} from '../../components';
-import {launchCamera} from 'react-native-image-picker';
+import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {showMessage} from 'react-native-flash-message';
 import Geolocation from 'react-native-geolocation-service';
 import axios from 'axios';
 import {getDatabase, ref, push} from 'firebase/database';
-import {getAuth} from 'firebase/auth'; // Add this import
-import app from '../../config/Firebase'; // Adjust path as needed
+import {getAuth} from 'firebase/auth';
+import app from '../../config/Firebase';
+import DocumentPicker from 'react-native-document-picker';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import {
+  validateFile,
+  uploadFileToCloudinary,
+  getFileDisplayInfo,
+  showUploadErrorMessage,
+} from '../../utils/fileUpload';
+import {CLOUDINARY_UPLOAD_URL} from '../../config/Cloudinary';
 
 const Scan = ({navigation}: {navigation: any}) => {
   const [tanggal, setTanggal] = useState('');
@@ -51,6 +61,52 @@ const Scan = ({navigation}: {navigation: any}) => {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // File upload states
+  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
+  const [localFilePath, setLocalFilePath] = useState<string | null>(null);
+
+  // New states for kegiatan dropdown and image uploads
+  const [kegiatan, setKegiatan] = useState<string>('');
+  const [showKegiatanDropdown, setShowKegiatanDropdown] = useState(false);
+  const [additionalImages, setAdditionalImages] = useState<
+    Array<{uri: string; base64?: string}>
+  >([]);
+
+  const kegiatanOptions = [
+    {label: 'Pilih Kegiatan', value: ''},
+    {label: 'Rapat', value: 'rapat'},
+    {label: 'Dinas Luar', value: 'dinas luar'},
+  ];
+
+  // Auto-fill keterangan based on kegiatan selection
+  const getDefaultKeterangan = (kegiatanValue: string): string => {
+    switch (kegiatanValue) {
+      case 'rapat':
+        return 'Menghadiri rapat dinas sesuai dengan jadwal yang telah ditentukan.';
+      case 'dinas luar':
+        return 'Melaksanakan tugas dinas luar kantor sesuai dengan surat perintah tugas.';
+      default:
+        return '';
+    }
+  };
+
+  // Handle kegiatan selection with auto-fill keterangan
+  const handleKegiatanSelection = (selectedKegiatan: string) => {
+    setKegiatan(selectedKegiatan);
+
+    // Auto-fill keterangan when kegiatan is selected
+    if (selectedKegiatan) {
+      const defaultKeterangan = getDefaultKeterangan(selectedKegiatan);
+      setKeterangan(defaultKeterangan);
+    } else {
+      // Clear keterangan when no kegiatan is selected
+      setKeterangan('');
+    }
+
+    setShowKegiatanDropdown(false);
+  };
+
   // Get current user function
   const getCurrentUser = () => {
     const auth = getAuth();
@@ -70,28 +126,96 @@ const Scan = ({navigation}: {navigation: any}) => {
 
   // Function to determine attendance status based on time
   const getAttendanceStatus = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const totalMinutes = hours * 60 + minutes;
+    console.log('🕐 Original time string received:', timeString);
 
-    // Convert time ranges to minutes
-    const presentStart = 8 * 60; // 08:00
-    const presentEnd = 8 * 60 + 30; // 08:30
-    const unexcusedStart = 17 * 60; // 17:00
-    const unexcusedEnd = 7 * 60 + 59; // 07:59 (next day, but we'll handle as same day for simplicity)
+    // Try to extract time using multiple methods
+    let hours = 0;
+    let minutes = 0;
 
-    // Check for Present (8:00 - 8:30 AM)
-    if (totalMinutes >= presentStart && totalMinutes <= presentEnd) {
-      return 'Present';
+    // Method 1: Direct split by colon OR dot (Indonesian format uses dots)
+    if (timeString.includes(':') || timeString.includes('.')) {
+      const separator = timeString.includes(':') ? ':' : '.';
+      const parts = timeString.split(separator);
+      const hourStr = parts[0].replace(/\D/g, ''); // Remove non-digits
+      const minuteStr = parts[1].replace(/\D/g, ''); // Remove non-digits
+
+      hours = parseInt(hourStr, 10);
+      minutes = parseInt(minuteStr, 10);
+
+      console.log('📊 Method 1 - Split by', separator + ':');
+      console.log('   Hour string:', hourStr, '-> parsed:', hours);
+      console.log('   Minute string:', minuteStr, '-> parsed:', minutes);
     }
 
-    // Check for Unexcused (17:00 - 07:59)
-    // This handles both evening (17:00-23:59) and early morning (00:00-07:59)
-    if (totalMinutes >= unexcusedStart || totalMinutes <= unexcusedEnd) {
+    // Method 2: If parsing failed, try regex
+    if (isNaN(hours) || isNaN(minutes)) {
+      const timeMatch = timeString.match(/(\d{1,2})[:.]\s*(\d{2})/);
+      if (timeMatch) {
+        hours = parseInt(timeMatch[1], 10);
+        minutes = parseInt(timeMatch[2], 10);
+        console.log('📊 Method 2 - Regex match:', timeMatch);
+        console.log('   Parsed hours:', hours, 'minutes:', minutes);
+      }
+    }
+
+    // Final validation
+    if (
+      isNaN(hours) ||
+      isNaN(minutes) ||
+      hours < 0 ||
+      hours > 23 ||
+      minutes < 0 ||
+      minutes > 59
+    ) {
+      console.log(
+        '❌ Invalid time values - hours:',
+        hours,
+        'minutes:',
+        minutes,
+      );
+      console.log('   Defaulting to Unexcused');
       return 'Unexcused';
     }
 
-    // Everything else is Late
-    return 'Late';
+    const totalMinutes = hours * 60 + minutes;
+
+    console.log('✅ Final parsed values:');
+    console.log('   Hours:', hours, 'Minutes:', minutes);
+    console.log('   Total minutes:', totalMinutes);
+    console.log(
+      '   Time in 24h format:',
+      `${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}`,
+    );
+
+    // Convert time ranges to minutes
+    const presentStart = 6 * 60; // 06:00 AM (360 minutes)
+    const presentEnd = 8 * 60; // 08:00 AM (480 minutes) - INCLUSIVE
+    const lateStart = 8 * 60 + 1; // 08:01 AM (481 minutes)
+    const lateEnd = 12 * 60; // 12:00 PM (720 minutes)
+
+    console.log('📋 Time classification ranges:');
+    console.log('   🟢 Present: 06:00 (360 min) to 08:00 (480 min)');
+    console.log('   🟡 Late: 08:01 (481 min) to 12:00 (720 min)');
+    console.log('   🔴 Unexcused: before 06:00 or after 12:00');
+    console.log('   📍 Current time: ' + totalMinutes + ' minutes');
+
+    // Check for Present (6:00 AM - 8:00 AM INCLUSIVE)
+    if (totalMinutes >= presentStart && totalMinutes <= presentEnd) {
+      console.log('🎉 RESULT: Present (within 6:00-8:00 range)');
+      return 'Present';
+    }
+
+    // Check for Late (8:01 AM - 12:00 PM)
+    if (totalMinutes >= lateStart && totalMinutes <= lateEnd) {
+      console.log('⚠️ RESULT: Late (within 8:01-12:00 range)');
+      return 'Late';
+    }
+
+    // Everything else is Unexcused (after 12:00 PM or before 6:00 AM)
+    console.log('❌ RESULT: Unexcused (outside all valid ranges)');
+    return 'Unexcused';
   };
 
   // Multiple geocoding services for better accuracy and place names
@@ -130,7 +254,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       // Process Nominatim result
       if (results[0].status === 'fulfilled') {
         const data = results[0].value.data;
-        const {address, display_name, namedetails} = data;
+        const {address, namedetails} = data;
 
         // Extract place name from various sources
         placeName =
@@ -257,14 +381,15 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       while (
         attempts < maxAttempts &&
-        (!bestPosition || bestPosition.coords.accuracy > 10)
+        (!bestPosition || (bestPosition as any).coords.accuracy > 10)
       ) {
         attempts++;
 
         try {
           console.log(`Location attempt ${attempts}/${maxAttempts}`);
 
-          const position = await new Promise((resolve, reject) => {
+          const position = await new Promise<any>((resolve, reject) => {
+            const startTime = Date.now();
             const watchId = Geolocation.watchPosition(
               pos => {
                 // Accept position if accuracy is very good (< 10m) or after timeout
@@ -282,24 +407,18 @@ const Scan = ({navigation}: {navigation: any}) => {
               },
               {
                 enableHighAccuracy: true,
-                timeout: 20000,
-                maximumAge: 0, // Always get fresh location
                 distanceFilter: 0, // Get all location updates
-                interval: 1000, // Check every second
-                fastestInterval: 500, // Fastest update rate
                 forceRequestLocation: true,
                 showLocationDialog: true, // Android: Show system location dialog
                 forceLocationManager: true, // Android: Use LocationManager instead of FusedLocationProvider
               },
             );
-
-            const startTime = Date.now();
           });
 
           // Keep the most accurate position
           if (
             !bestPosition ||
-            position.coords.accuracy < bestPosition.coords.accuracy
+            position.coords.accuracy < (bestPosition as any).coords.accuracy
           ) {
             bestPosition = position;
           }
@@ -316,21 +435,20 @@ const Scan = ({navigation}: {navigation: any}) => {
           if (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
-        } catch (attemptError) {
+        } catch (attemptError: any) {
           console.log(`Attempt ${attempts} failed:`, attemptError);
 
           // If this is the last attempt, try with fallback settings
           if (attempts === maxAttempts) {
             try {
-              bestPosition = await new Promise((resolve, reject) => {
+              bestPosition = await new Promise<any>((resolve, reject) => {
                 Geolocation.getCurrentPosition(resolve, reject, {
                   enableHighAccuracy: true,
                   timeout: 15000,
-                  maximumAge: 2000,
                   distanceFilter: 1,
                 });
               });
-            } catch (fallbackError) {
+            } catch (fallbackError: any) {
               console.log('Fallback also failed:', fallbackError);
             }
           }
@@ -341,7 +459,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         throw new Error(`Can't get location after multiple attempt`);
       }
 
-      const accuracy = bestPosition.coords.accuracy;
+      const accuracy = (bestPosition as any).coords.accuracy;
       let accuracyLevel;
       let isHighAccuracy;
 
@@ -361,13 +479,13 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       // Get enhanced location details
       const locationDetails = await getLocationDetails(
-        bestPosition.coords.latitude,
-        bestPosition.coords.longitude,
+        (bestPosition as any).coords.latitude,
+        (bestPosition as any).coords.longitude,
       );
 
       setLocation({
-        latitude: bestPosition.coords.latitude,
-        longitude: bestPosition.coords.longitude,
+        latitude: (bestPosition as any).coords.latitude,
+        longitude: (bestPosition as any).coords.longitude,
         accuracy: accuracy,
         address: locationDetails?.shortAddress || null,
         fullAddress: locationDetails?.fullAddress || null,
@@ -380,9 +498,9 @@ const Scan = ({navigation}: {navigation: any}) => {
         ? `${locationDetails.placeName} - ${locationDetails.shortAddress}`
         : locationDetails?.shortAddress ||
           'Koordinat: ' +
-            bestPosition.coords.latitude.toFixed(6) +
+            (bestPosition as any).coords.latitude.toFixed(6) +
             ', ' +
-            bestPosition.coords.longitude.toFixed(6);
+            (bestPosition as any).coords.longitude.toFixed(6);
 
       showMessage({
         message: `Lokasi Terdeteksi (${accuracyLevel})`,
@@ -392,7 +510,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         type: accuracy <= 15 ? 'success' : accuracy <= 150 ? 'warning' : 'info',
         duration: 5000,
       });
-    } catch (error) {
+    } catch (error: any) {
       setLocation(prev => ({
         ...prev,
         error: error.message,
@@ -434,13 +552,13 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       const asset = result.assets[0];
       setPhoto({
-        uri: asset.uri,
+        uri: asset.uri || '',
         base64: asset.base64, // Store base64 data
       });
 
       // Get location after photo is successfully taken
       await fetchDateTimeAndLocation();
-    } catch (error) {
+    } catch (error: any) {
       showMessage({
         message: 'Error',
         description: error.message,
@@ -472,6 +590,241 @@ const Scan = ({navigation}: {navigation: any}) => {
     await fetchDateTimeAndLocation();
   };
 
+  // File selection handler - only store locally, don't upload to Cloudinary yet
+  const handleFileUpload = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [
+          DocumentPicker.types.pdf,
+          DocumentPicker.types.doc,
+          DocumentPicker.types.docx,
+        ],
+        allowMultiSelection: false,
+      });
+
+      const file = result[0];
+
+      // Validate file
+      const validation = validateFile(file);
+      if (!validation.isValid) {
+        showUploadErrorMessage(validation.error || 'Invalid file');
+        return;
+      }
+
+      // Copy file to local cache directory for better access
+      const fileName_clean = (file.name ?? 'file').replace(
+        /[^a-zA-Z0-9.-]/g,
+        '_',
+      );
+      const localPath = `${
+        ReactNativeBlobUtil.fs.dirs.CacheDir
+      }/${Date.now()}_${fileName_clean}`;
+
+      try {
+        // Copy the file to cache directory
+        await ReactNativeBlobUtil.fs.cp(file.uri, localPath);
+
+        // Store file info and local path
+        setSelectedFile(file);
+        setLocalFilePath(localPath);
+
+        showMessage({
+          message: 'File Selected',
+          description: `${file.name} ready for preview and upload`,
+          type: 'success',
+          duration: 2000,
+        });
+      } catch (copyError: any) {
+        showMessage({
+          message: 'File Error',
+          description: 'Failed to prepare file: ' + copyError.message,
+          type: 'danger',
+        });
+      }
+    } catch (error: any) {
+      if (DocumentPicker.isCancel(error)) {
+        // User cancelled the picker
+        return;
+      }
+
+      showMessage({
+        message: 'File Selection Failed',
+        description: 'Failed to select file: ' + error.message,
+        type: 'danger',
+      });
+    }
+  };
+
+  // Remove selected file
+  const handleRemoveFile = async () => {
+    // Clean up local file if it exists
+    if (localFilePath) {
+      try {
+        const exists = await ReactNativeBlobUtil.fs.exists(localFilePath);
+        if (exists) {
+          await ReactNativeBlobUtil.fs.unlink(localFilePath);
+        }
+      } catch (error) {
+        console.log('Error cleaning up local file:', error);
+      }
+    }
+
+    setSelectedFile(null);
+    setLocalFilePath(null);
+    setUploadedFileUrl(null);
+  };
+
+  // Show image picker options
+  const showImagePickerOptions = () => {
+    Alert.alert(
+      'Pilih Gambar',
+      'Pilih sumber gambar',
+      [
+        {
+          text: 'Kamera',
+          onPress: () => handleImagePicker('camera'),
+        },
+        {
+          text: 'Galeri',
+          onPress: () => handleImagePicker('gallery'),
+        },
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+      ],
+      {cancelable: true},
+    );
+  };
+
+  // Handle additional image capture/selection
+  const handleImagePicker = async (source: 'camera' | 'gallery') => {
+    if (additionalImages.length >= 5) {
+      showMessage({
+        message: 'Limit Reached',
+        description: 'Maximum 5 images allowed',
+        type: 'warning',
+      });
+      return;
+    }
+
+    try {
+      const options = {
+        mediaType: 'photo' as const,
+        includeBase64: true,
+        quality: 0.7 as const,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        saveToPhotos: true,
+      };
+
+      const result =
+        source === 'camera'
+          ? await launchCamera({...options, cameraType: 'back'})
+          : await launchImageLibrary(options);
+
+      if (result.didCancel) {
+        showMessage({
+          message: 'Warning',
+          description:
+            source === 'camera'
+              ? 'Taking Photo Canceled'
+              : 'Image Selection Canceled',
+          type: 'warning',
+        });
+        return;
+      }
+
+      if (result.errorCode || !result.assets?.[0]?.uri) {
+        throw new Error(
+          result.errorMessage ||
+            `Failed to ${source === 'camera' ? 'take photo' : 'select image'}`,
+        );
+      }
+
+      const asset = result.assets[0];
+      if (asset.uri && asset.base64) {
+        const newImage = {
+          uri: asset.uri,
+          base64: asset.base64,
+        };
+
+        setAdditionalImages(prev => [...prev, newImage]);
+
+        showMessage({
+          message: 'Image Added',
+          description: `Image ${
+            additionalImages.length + 1
+          } added successfully`,
+          type: 'success',
+          duration: 2000,
+        });
+      }
+    } catch (error: any) {
+      showMessage({
+        message: 'Error',
+        description: error.message,
+        type: 'danger',
+      });
+    }
+  };
+
+  // Handle additional image capture (wrapper for backward compatibility)
+  const handleAddImage = () => {
+    showImagePickerOptions();
+  };
+
+  // Remove additional image
+  const handleRemoveImage = (index: number) => {
+    setAdditionalImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Open file with app chooser - works with local file
+  const openFilePreview = async () => {
+    if (!selectedFile || !localFilePath) {
+      showMessage({
+        message: 'File Not Available',
+        description: 'Please select a file first',
+        type: 'warning',
+      });
+      return;
+    }
+
+    try {
+      // Check if local file still exists
+      const exists = await ReactNativeBlobUtil.fs.exists(localFilePath);
+      if (!exists) {
+        showMessage({
+          message: 'File Not Found',
+          description:
+            'Local file no longer exists. Please select the file again.',
+          type: 'warning',
+        });
+        handleRemoveFile();
+        return;
+      }
+
+      // Show app chooser directly
+      if (Platform.OS === 'android') {
+        await ReactNativeBlobUtil.android.actionViewIntent(
+          localFilePath,
+          selectedFile.type,
+        );
+      } else {
+        // For iOS, use the file URI
+        await Linking.openURL(`file://${localFilePath}`);
+      }
+    } catch (error: any) {
+      console.error('File open error:', error);
+      showMessage({
+        message: 'Cannot Open File',
+        description:
+          'Failed to open file with external app. Make sure you have a compatible app installed (PDF reader, Microsoft Office, etc.)',
+        type: 'danger',
+      });
+    }
+  };
+
   // Updated confirmation handler with Firebase Realtime Database and user information
   const handleConfirmation = async () => {
     if (isSubmitting) return; // Prevent multiple submissions
@@ -494,10 +847,21 @@ const Scan = ({navigation}: {navigation: any}) => {
       return;
     }
 
-    if (!keterangan.trim()) {
+    // Validation for kegiatan-dependent fields
+    if (kegiatan && !keterangan.trim()) {
       showMessage({
-        message: 'Peringatan',
-        description: 'Harap isi keterangan terlebih dahulu',
+        message: 'Warning',
+        description: 'Keterangan is required when kegiatan is selected',
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (kegiatan && additionalImages.length === 0) {
+      showMessage({
+        message: 'Warning',
+        description:
+          'At least one additional image is required when kegiatan is selected',
         type: 'warning',
       });
       return;
@@ -508,6 +872,41 @@ const Scan = ({navigation}: {navigation: any}) => {
     try {
       // Get current user information
       const currentUser = getCurrentUser();
+
+      // Upload file to Cloudinary if selected (only when confirming)
+      let fileUploadUrl = null;
+      if (selectedFile && localFilePath) {
+        try {
+          showMessage({
+            message: 'Uploading File...',
+            description: 'Please wait while we upload your document',
+            type: 'info',
+            duration: 2000,
+          });
+
+          fileUploadUrl = await uploadFileToCloudinary(selectedFile);
+          setUploadedFileUrl(fileUploadUrl);
+        } catch (uploadError: any) {
+          console.error('File upload error:', uploadError);
+          showMessage({
+            message: 'File Upload Failed',
+            description:
+              'Continuing without file attachment: ' + uploadError.message,
+            type: 'warning',
+            duration: 3000,
+          });
+        }
+      }
+
+      // Store additional images as base64 in Firebase (no Cloudinary upload for images)
+      const additionalImagesBase64 =
+        additionalImages.length > 0
+          ? additionalImages.map((image, index) => ({
+              data: `data:image/jpeg;base64,${image.base64}`,
+              index: index + 1,
+              uploadedAt: new Date().toISOString(),
+            }))
+          : [];
 
       // Get Firebase Realtime Database instance
       const database = getDatabase(app);
@@ -541,9 +940,25 @@ const Scan = ({navigation}: {navigation: any}) => {
         tanggal,
         waktu,
         keterangan: keterangan.trim(), // Add keterangan field
+        kegiatan: kegiatan || null, // Add kegiatan field
         status: attendanceStatus, // Add attendance status based on time
         timestamp: Date.now(), // Add timestamp for sorting
         createdAt: new Date().toISOString(), // Human readable timestamp
+        // File upload data (optional) - now uploaded to Cloudinary
+        ...(fileUploadUrl &&
+          selectedFile && {
+            uploadedFile: {
+              url: fileUploadUrl,
+              name: selectedFile.name ?? 'Unknown File',
+              type: selectedFile.type,
+              size: selectedFile.size,
+              uploadedAt: new Date().toISOString(),
+            },
+          }),
+        // Additional images data (optional) - stored as base64 in Firebase
+        ...(additionalImagesBase64.length > 0 && {
+          additionalImages: additionalImagesBase64,
+        }),
         // Additional metadata
         deviceInfo: {
           platform: Platform.OS,
@@ -559,12 +974,33 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       console.log('Data successfully saved with ID:', newAttendanceRef.key);
 
+      // Clean up local file after successful submission
+      if (localFilePath) {
+        try {
+          const exists = await ReactNativeBlobUtil.fs.exists(localFilePath);
+          if (exists) {
+            await ReactNativeBlobUtil.fs.unlink(localFilePath);
+          }
+        } catch (cleanupError) {
+          console.log(
+            'Error cleaning up local file after submission:',
+            cleanupError,
+          );
+        }
+      }
+
       // Show success message with status information
       showMessage({
         message: 'Success!',
         description: `Data is saved for ${
           currentUser.email || currentUser.displayName
-        }\nStatus: ${attendanceStatus}`,
+        }\nStatus: ${attendanceStatus}${
+          fileUploadUrl ? '\nFile uploaded successfully' : ''
+        }${
+          additionalImagesBase64.length > 0
+            ? `\n${additionalImagesBase64.length} images saved`
+            : ''
+        }`,
         type: 'success',
         duration: 3000,
       });
@@ -573,7 +1009,7 @@ const Scan = ({navigation}: {navigation: any}) => {
       setTimeout(() => {
         navigation.navigate('Home');
       }, 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Firebase submission error:', error);
 
       let errorMessage = 'Something went wrong';
@@ -703,20 +1139,165 @@ const Scan = ({navigation}: {navigation: any}) => {
             </View>
           </View>
 
-          <View style={styles.keteranganSection}>
-            <Text style={styles.sectionLabel}>Keterangan *</Text>
+          {/* Kegiatan Dropdown Section */}
+          <View style={styles.kegiatanSection}>
+            <Text style={styles.sectionLabel}>Kegiatan (Opsional)</Text>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowKegiatanDropdown(!showKegiatanDropdown)}>
+              <Text
+                style={[
+                  styles.dropdownText,
+                  !kegiatan && styles.placeholderText,
+                ]}>
+                {kegiatan
+                  ? kegiatanOptions.find(opt => opt.value === kegiatan)?.label
+                  : 'Pilih Kegiatan'}
+              </Text>
+              <Text style={styles.dropdownArrow}>
+                {showKegiatanDropdown ? '▲' : '▼'}
+              </Text>
+            </TouchableOpacity>
 
-            {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
+            {showKegiatanDropdown && (
+              <View style={styles.dropdownList}>
+                {kegiatanOptions.map(option => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={styles.dropdownItem}
+                    onPress={() => handleKegiatanSelection(option.value)}>
+                    <Text style={styles.dropdownItemText}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.keteranganSection}>
+            <Text style={styles.sectionLabel}>
+              Keterangan {kegiatan ? '*' : '(Opsional)'}
+            </Text>
             <RNTextInput
               value={keterangan}
               onChangeText={setKeterangan}
-              style={styles.keteranganInput}
-              placeholder="Masukkan keterangan absensi (wajib diisi)"
+              style={[
+                styles.keteranganInput,
+                kegiatan && styles.mandatoryInput,
+              ]}
+              placeholder={
+                kegiatan
+                  ? 'Masukkan keterangan (wajib diisi)'
+                  : 'Masukkan keterangan absensi (opsional)'
+              }
               placeholderTextColor="#999"
               multiline={true}
               numberOfLines={4}
               textAlignVertical="top"
             />
+          </View>
+
+          {/* Image Upload Section - Moved after keterangan */}
+          <View style={styles.imageUploadSection}>
+            <Text style={styles.sectionLabel}>
+              Upload Gambar {kegiatan ? '*' : '(Opsional)'}
+            </Text>
+            <Text style={styles.fileUploadSubtitle}>
+              Upload gambar pendukung (Max 5 gambar)
+            </Text>
+
+            {additionalImages.length > 0 ? (
+              <View>
+                <View style={styles.imageGrid}>
+                  {additionalImages.map((image, index) => (
+                    <View key={index} style={styles.imageContainer}>
+                      <Image
+                        source={{uri: image.uri}}
+                        style={styles.imagePreview}
+                      />
+                      <TouchableOpacity
+                        onPress={() => handleRemoveImage(index)}
+                        style={styles.removeImageButton}>
+                        <Text style={styles.removeImageText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+
+                {additionalImages.length < 5 && (
+                  <TouchableOpacity
+                    onPress={handleAddImage}
+                    style={styles.fileUploadButton}>
+                    <Text style={styles.fileUploadIcon}>📸</Text>
+                    <Text style={styles.fileUploadText}>Tambah Gambar</Text>
+                    <Text style={styles.fileUploadSubtext}>
+                      {additionalImages.length}/5 gambar
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleAddImage}
+                style={[
+                  styles.fileUploadButton,
+                  kegiatan && additionalImages.length === 0
+                    ? styles.mandatoryField
+                    : null,
+                ]}>
+                <Text style={styles.fileUploadIcon}>📸</Text>
+                <Text style={styles.fileUploadText}>Tambah Gambar</Text>
+                <Text style={styles.fileUploadSubtext}>
+                  Tap untuk mengambil/memilih gambar
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* File Upload Section */}
+          <View style={styles.fileUploadSection}>
+            <Text style={styles.sectionLabel}>
+              Upload File (Opsional) dalam pengembangan
+            </Text>
+            <Text style={styles.fileUploadSubtitle}>
+              Upload dokumen pendukung (PDF, DOC, DOCX - Max 5MB)
+            </Text>
+
+            {selectedFile ? (
+              <View style={styles.selectedFileContainer}>
+                <View style={styles.fileInfo}>
+                  <Text style={styles.fileName}>{selectedFile.name}</Text>
+                  <Text style={styles.fileSize}>
+                    {getFileDisplayInfo(selectedFile).size} •{' '}
+                    {getFileDisplayInfo(selectedFile).extension}
+                  </Text>
+                  {uploadedFileUrl && (
+                    <Text style={styles.uploadStatus}>✓ Uploaded to cloud</Text>
+                  )}
+                </View>
+                <View style={styles.fileActions}>
+                  <TouchableOpacity
+                    onPress={openFilePreview}
+                    style={styles.previewFileButton}>
+                    <Text style={styles.previewFileText}>👁</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleRemoveFile}
+                    style={styles.removeFileButton}>
+                    <Text style={styles.removeFileText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleFileUpload}
+                style={styles.fileUploadButton}>
+                <Text style={styles.fileUploadIcon}>📎</Text>
+                <Text style={styles.fileUploadText}>Pilih File</Text>
+                <Text style={styles.fileUploadSubtext}>
+                  Tap untuk memilih dokumen
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.buttonContainer}>
@@ -897,6 +1478,184 @@ const styles = StyleSheet.create({
     minHeight: 100,
     fontSize: 14,
     marginTop: 5,
+  },
+  mandatoryInput: {
+    borderColor: '#ff6b6b',
+  },
+  // File upload styles
+  fileUploadSection: {
+    marginTop: 20,
+  },
+  fileUploadSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5,
+    marginBottom: 15,
+  },
+  selectedFileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  fileSize: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  uploadStatus: {
+    fontSize: 12,
+    color: '#28a745',
+    fontWeight: '500',
+  },
+  fileActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  previewFileButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#0066CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewFileText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  removeFileButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#dc3545',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeFileText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fileUploadButton: {
+    borderWidth: 2,
+    borderColor: '#0066CC',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#f8f9ff',
+  },
+  fileUploadIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  fileUploadText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0066CC',
+    marginBottom: 4,
+  },
+  fileUploadSubtext: {
+    fontSize: 12,
+    color: '#666',
+  },
+  // Kegiatan dropdown styles
+  kegiatanSection: {
+    marginTop: 20,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 12,
+    backgroundColor: '#fff',
+    marginTop: 5,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  dropdownArrow: {
+    fontSize: 12,
+    color: '#666',
+  },
+  dropdownList: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderTopWidth: 0,
+    borderRadius: 5,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    backgroundColor: '#fff',
+    maxHeight: 150,
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  // Image upload styles
+  imageUploadSection: {
+    marginTop: 20,
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  imageContainer: {
+    width: '30%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 53, 69, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeImageText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  mandatoryField: {
+    borderColor: '#ff6b6b',
   },
 });
 

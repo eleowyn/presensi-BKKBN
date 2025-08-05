@@ -704,7 +704,7 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}>
-            <Header text="User Details" />
+            <Header text="Attendance Details" />
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>Tidak ada data kehadiran</Text>
               <Button text="Go Back" onPress={() => navigation.goBack()} />
@@ -722,7 +722,7 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}>
-          <Header text="Detail User" />
+          <Header text="Attendance Details" />
 
           {/* Large attendance photo */}
           <View style={styles.imageContainer}>
