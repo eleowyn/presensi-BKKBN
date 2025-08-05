@@ -34,7 +34,7 @@ interface AttendanceItem {
   keterangan?: string; // Added keterangan field
 }
 
-const Card = () => {
+const Card = ({ navigation }: { navigation?: any }) => {
   const [attendanceData, setAttendanceData] = useState<AttendanceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -218,34 +218,41 @@ const Card = () => {
     }
   };
 
-  // Handle card press to show more details
+  // Handle card press to navigate to scan details
   const handleCardPress = (item: AttendanceItem) => {
     try {
-      Alert.alert(
-        'Detail Absensi',
-        `Status: ${item.status || 'Tidak diketahui'}\nTanggal: ${
-          item.tanggal || 'Tidak diketahui'
-        }\nWaktu: ${item.waktu || 'Tidak diketahui'}\nLokasi: ${
-          item.location?.address || 'Tidak diketahui'
-        }\nAlamat Lengkap: ${
-          item.location?.fullAddress || 'Tidak diketahui'
-        }\nAkurasi: ±${
-          item.location?.accuracy?.toFixed(1) || 0
-        }m\nStatus Akurasi: ${
-          item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'
-        }`,
-        [
-          {
-            text: 'Tutup',
-            style: 'cancel',
-          },
-        ],
-      );
+      if (navigation) {
+        navigation.navigate('ScanDetails', {
+          attendanceData: item,
+        });
+      } else {
+        // Fallback to Alert if navigation is not available
+        Alert.alert(
+          'Detail Absensi',
+          `Status: ${item.status || 'Tidak diketahui'}\nTanggal: ${
+            item.tanggal || 'Tidak diketahui'
+          }\nWaktu: ${item.waktu || 'Tidak diketahui'}\nLokasi: ${
+            item.location?.address || 'Tidak diketahui'
+          }\nAlamat Lengkap: ${
+            item.location?.fullAddress || 'Tidak diketahui'
+          }\nAkurasi: ±${
+            item.location?.accuracy?.toFixed(1) || 0
+          }m\nStatus Akurasi: ${
+            item.location?.isHighAccuracy ? 'Tinggi' : 'Rendah'
+          }`,
+          [
+            {
+              text: 'Tutup',
+              style: 'cancel',
+            },
+          ],
+        );
+      }
     } catch (error) {
-      console.error('Error showing card details:', error);
+      console.error('Error navigating to scan details:', error);
       showMessage({
         message: 'Error',
-        description: 'Failed to load data',
+        description: 'Failed to open scan details',
         type: 'danger',
       });
     }
@@ -389,9 +396,6 @@ const Card = () => {
         contentContainerStyle={
           attendanceData.length === 0 ? styles.emptyListContainer : null
         }
-        onError={error => {
-          console.error('FlatList error:', error);
-        }}
       />
     </View>
   );

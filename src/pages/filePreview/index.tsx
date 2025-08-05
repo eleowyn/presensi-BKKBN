@@ -1,101 +1,124 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   SafeAreaView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Linking,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import {Header} from '../../components';
-import Pdf from 'react-native-pdf';
 import {WebView} from 'react-native-webview';
-import RNFetchBlob from 'react-native-blob-util';
 import {showMessage} from 'react-native-flash-message';
+import {autoFixCloudinaryUrl, fixBrokenCloudinaryUrl} from '../../utils/fileUpload';
 
 const FilePreview = ({route, navigation}: {route: any; navigation: any}) => {
   const {fileUrl, fileName, fileType, fileSize} = route.params;
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [localFilePath, setLocalFilePath] = useState<string | null>(null);
-
-  const downloadAndCacheFile = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Create a local file path
-      const fileName_clean = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const localPath = `${RNFetchBlob.fs.dirs.DocumentDir}/${Date.now()}_${fileName_clean}`;
-
-      // Download file to local storage
-      const response = await RNFetchBlob.config({
-        path: localPath,
-        fileCache: true,
-      }).fetch('GET', fileUrl);
-
-      if (response.respInfo.status === 200) {
-        setLocalFilePath(localPath);
-        console.log('File downloaded to:', localPath);
-      } else {
-        throw new Error('Failed to download file');
-      }
-    } catch (err: any) {
-      console.error('Download error:', err);
-      setError(err.message || 'Failed to load file');
-      showMessage({
-        message: 'Download Failed',
-        description: 'Could not download file for preview',
-        type: 'danger',
-      });
-    } finally {
-      setLoading(false);
+  const [currentViewerUrl, setCurrentViewerUrl] = useState<string>('');
+  const [viewerAttempt, setViewerAttempt] = useState(0);
+  
+  // Debug: Log the original file URL
+  console.log('Original file URL:', fileUrl);
+  console.log('File type:', fileType);
+  console.log('File name:', fileName);
+  
+  // Multiple URL fixing strategies
+  const getFixedUrls = (originalUrl: string) => {
+    const urls = [];
+    
+    // Strategy 1: Auto-fix using existing utility
+    const autoFixed = autoFixCloudinaryUrl(originalUrl);
+    urls.push(autoFixed);
+    console.log('Auto-fixed URL:', autoFixed);
+    
+    // Strategy 2: Fix broken URLs (image -> raw)
+    const brokenFixed = fixBrokenCloudinaryUrl(originalUrl);
+    if (brokenFixed !== autoFixed) {
+      urls.push(brokenFixed);
+      console.log('Broken-fixed URL:', brokenFixed);
     }
-  }, [fileUrl, fileName]);
-
-  useEffect(() => {
-    downloadAndCacheFile();
-  }, [downloadAndCacheFile]);
-
-  const openWithExternalApp = () => {
-    Alert.alert(
-      'Open File',
-      'Choose how to open this file:',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Open with Default App',
-          onPress: () => openWithDefaultApp(),
-        },
-        {
-          text: 'Share File',
-          onPress: () => shareFile(),
-        },
-        {
-          text: 'Download to Device',
-          onPress: () => downloadToDevice(),
-        },
-      ],
-      {cancelable: true},
-    );
+    
+    // Strategy 3: Add inline flags to Cloudinary URLs
+    if (originalUrl.includes('cloudinary.com')) {
+      const urlParts = originalUrl.split('/upload/');
+      if (urlParts.length === 2) {
+        const withFlags = `${urlParts[0]}/upload/fl_attachment:inline/${urlParts[1]}`;
+        if (!urls.includes(withFlags)) {
+          urls.push(withFlags);
+          console.log('URL with flags:', withFlags);
+        }
+      }
+    }
+    
+    // Strategy 4: Original URL as fallback
+    if (!urls.includes(originalUrl)) {
+      urls.push(originalUrl);
+      console.log('Original URL added as fallback:', originalUrl);
+    }
+    
+    return urls;
   };
 
-  const openWithDefaultApp = async () => {
-    try {
-      if (localFilePath) {
-        // For local file
-        const fileUri = Platform.OS === 'ios' ? localFilePath : `file://${localFilePath}`;
-        await Linking.openURL(fileUri);
-      } else {
-        // Fallback to URL
-        await Linking.openURL(fileUrl);
+  const fixedUrls = getFixedUrls(fileUrl);
+  
+  // Multiple viewer strategies
+  const getViewerUrls = (fileUrl: string) => {
+    const viewers = [];
+    
+    // Strategy 1: Google Docs Viewer
+    viewers.push({
+      name: 'Google Docs Viewer',
+      url: `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`,
+    });
+    
+    // Strategy 2: Office Online Viewer (for Office docs)
+    if (fileType.includes('word') || fileType.includes('document')) {
+      viewers.push({
+        name: 'Office Online Viewer',
+        url: `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`,
+      });
+    }
+    
+    // Strategy 3: Mozilla PDF.js (for PDFs)
+    if (fileType === 'application/pdf') {
+      viewers.push({
+        name: 'Mozilla PDF.js',
+        url: `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`,
+      });
+    }
+    
+    // Strategy 4: Direct URL (as iframe)
+    viewers.push({
+      name: 'Direct View',
+      url: fileUrl,
+    });
+    
+    return viewers;
+  };
+
+  // Initialize with first viewer and first URL
+  useEffect(() => {
+    const urls = getFixedUrls(fileUrl);
+    if (urls.length > 0) {
+      const viewers = getViewerUrls(urls[0]);
+      if (viewers.length > 0) {
+        setCurrentViewerUrl(viewers[0].url);
+        console.log('Initial viewer URL:', viewers[0].url);
+        console.log('Using file URL:', urls[0]);
       }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileUrl, fileType]);
+
+  const openWithExternalApp = async () => {
+    try {
+      // Try the best fixed URL
+      const bestUrl = fixedUrls[0] || fileUrl;
+      console.log('Opening with external app:', bestUrl);
+      await Linking.openURL(bestUrl);
     } catch (error) {
       showMessage({
         message: 'Cannot Open File',
@@ -105,54 +128,38 @@ const FilePreview = ({route, navigation}: {route: any; navigation: any}) => {
     }
   };
 
-  const shareFile = async () => {
-    try {
-      if (localFilePath) {
-        await RNFetchBlob.android.actionViewIntent(localFilePath, fileType);
-      } else {
-        showMessage({
-          message: 'File Not Ready',
-          description: 'Please wait for file to download',
-          type: 'warning',
-        });
-      }
-    } catch (error) {
-      showMessage({
-        message: 'Share Failed',
-        description: 'Could not share file',
-        type: 'danger',
-      });
+  const tryNextViewer = () => {
+    const maxViewersPerUrl = 4; // Updated to include direct view
+    const currentUrlIndex = Math.floor(viewerAttempt / maxViewersPerUrl);
+    const currentViewerIndex = viewerAttempt % maxViewersPerUrl;
+    
+    let nextUrlIndex = currentUrlIndex;
+    let nextViewerIndex = currentViewerIndex + 1;
+    
+    // If we've tried all viewers for current URL, move to next URL
+    if (nextViewerIndex >= maxViewersPerUrl) {
+      nextUrlIndex++;
+      nextViewerIndex = 0;
     }
-  };
-
-  const downloadToDevice = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        // For Android, move file to Downloads folder
-        const downloadPath = `${RNFetchBlob.fs.dirs.DownloadDir}/${fileName}`;
-        
-        if (localFilePath) {
-          await RNFetchBlob.fs.cp(localFilePath, downloadPath);
-          showMessage({
-            message: 'Download Complete',
-            description: `File saved to Downloads folder`,
-            type: 'success',
-          });
-        }
-      } else {
-        // For iOS, save to Files app
-        showMessage({
-          message: 'Use Share',
-          description: 'Use the share option to save to Files app',
-          type: 'info',
-        });
-      }
-    } catch (error) {
-      showMessage({
-        message: 'Download Failed',
-        description: 'Could not save file to device',
-        type: 'danger',
-      });
+    
+    // If we've tried all URLs, show error
+    if (nextUrlIndex >= fixedUrls.length) {
+      setError('Unable to preview this file. Please try opening with external app.');
+      return;
+    }
+    
+    const viewers = getViewerUrls(fixedUrls[nextUrlIndex]);
+    if (nextViewerIndex < viewers.length) {
+      const nextAttempt = nextUrlIndex * maxViewersPerUrl + nextViewerIndex;
+      setViewerAttempt(nextAttempt);
+      setCurrentViewerUrl(viewers[nextViewerIndex].url);
+      setError(null);
+      
+      console.log(`Trying viewer ${nextAttempt + 1}:`, viewers[nextViewerIndex].name);
+      console.log('With URL:', fixedUrls[nextUrlIndex]);
+      console.log('Viewer URL:', viewers[nextViewerIndex].url);
+    } else {
+      setError('Unable to preview this file. Please try opening with external app.');
     }
   };
 
@@ -162,6 +169,9 @@ const FilePreview = ({route, navigation}: {route: any; navigation: any}) => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0066CC" />
           <Text style={styles.loadingText}>Loading file preview...</Text>
+          <Text style={styles.loadingSubtext}>
+            Attempt {viewerAttempt + 1} of {fixedUrls.length * 4}
+          </Text>
         </View>
       );
     }
@@ -170,79 +180,69 @@ const FilePreview = ({route, navigation}: {route: any; navigation: any}) => {
       return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>❌ {error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={downloadAndCacheFile}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+          <View style={styles.errorButtons}>
+            <TouchableOpacity style={styles.retryButton} onPress={tryNextViewer}>
+              <Text style={styles.retryButtonText}>Try Different Viewer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.retryButton} onPress={() => {
+              setError(null);
+              setViewerAttempt(0);
+              const viewers = getViewerUrls(fixedUrls[0]);
+              setCurrentViewerUrl(viewers[0].url);
+            }}>
+              <Text style={styles.retryButtonText}>Start Over</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
 
-    // PDF Preview
-    if (fileType === 'application/pdf' && localFilePath) {
+    if (!currentViewerUrl) {
       return (
-        <View style={styles.previewContainer}>
-          <Pdf
-            source={{uri: localFilePath}}
-            onLoadComplete={(numberOfPages) => {
-              console.log(`PDF loaded with ${numberOfPages} pages`);
-            }}
-            onPageChanged={(page) => {
-              console.log(`Current page: ${page}`);
-            }}
-            onError={(error) => {
-              console.error('PDF Error:', error);
-              setError('Failed to load PDF');
-            }}
-            style={styles.pdfViewer}
-            trustAllCerts={false}
-            enablePaging={true}
-            spacing={10}
-            horizontal={false}
-          />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>❌ No viewer URL available</Text>
         </View>
       );
     }
-
-    // DOC/DOCX Preview using WebView (Google Docs Viewer)
-    if (fileType.includes('word') || fileType.includes('document')) {
-      const googleDocsUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-      
-      return (
-        <View style={styles.previewContainer}>
-          <WebView
-            source={{uri: googleDocsUrl}}
-            style={styles.webViewer}
-            onError={(error) => {
-              console.error('WebView Error:', error);
-              setError('Failed to load document preview');
-            }}
-            onLoadStart={() => setLoading(true)}
-            onLoadEnd={() => setLoading(false)}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            renderLoading={() => (
-              <View style={styles.webViewLoading}>
-                <ActivityIndicator size="large" color="#0066CC" />
-                <Text>Loading document...</Text>
-              </View>
-            )}
-          />
-        </View>
-      );
-    }
-
-    // Fallback for unsupported file types
+    
     return (
-      <View style={styles.unsupportedContainer}>
-        <Text style={styles.unsupportedText}>📄</Text>
-        <Text style={styles.unsupportedTitle}>Preview Not Available</Text>
-        <Text style={styles.unsupportedDescription}>
-          This file type cannot be previewed in the app.
-        </Text>
-        <Text style={styles.unsupportedDescription}>
-          Use "Open with External App" to view the file.
-        </Text>
+      <View style={styles.previewContainer}>
+        <WebView
+          source={{uri: currentViewerUrl}}
+          style={styles.webViewer}
+          onError={(error) => {
+            console.error('WebView Error:', error);
+            console.log('Failed viewer URL:', currentViewerUrl);
+            tryNextViewer();
+          }}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('HTTP Error:', nativeEvent.statusCode, nativeEvent.description);
+            console.log('Failed viewer URL:', currentViewerUrl);
+            tryNextViewer();
+          }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          mixedContentMode="compatibility"
+          allowsInlineMediaPlayback={true}
+          scalesPageToFit={true}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          renderLoading={() => (
+            <View style={styles.webViewLoading}>
+              <ActivityIndicator size="large" color="#0066CC" />
+              <Text style={styles.loadingText}>
+                Loading {fileType.includes('pdf') ? 'PDF' : 'document'} preview...
+              </Text>
+              <Text style={styles.loadingSubtext}>
+                Attempt {viewerAttempt + 1} of {fixedUrls.length * 4}
+              </Text>
+            </View>
+          )}
+        />
       </View>
     );
   };
@@ -264,7 +264,7 @@ const FilePreview = ({route, navigation}: {route: any; navigation: any}) => {
         <TouchableOpacity
           style={styles.actionButton}
           onPress={openWithExternalApp}>
-          <Text style={styles.actionButtonText}>📱 Open With</Text>
+          <Text style={styles.actionButtonText}>📱 Open With External App</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -337,10 +337,6 @@ const styles = StyleSheet.create({
   previewContainer: {
     flex: 1,
   },
-  pdfViewer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
   webViewer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -366,6 +362,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#999',
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -378,6 +379,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
+  errorButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   retryButton: {
     backgroundColor: '#0066CC',
     paddingVertical: 12,
@@ -388,29 +393,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
-  },
-  unsupportedContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  unsupportedText: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  unsupportedTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  unsupportedDescription: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 4,
   },
 });
 

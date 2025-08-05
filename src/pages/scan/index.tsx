@@ -11,10 +11,11 @@ import {
   Platform,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import React, {useState} from 'react';
 import {Button, Buttonnavigation, Header} from '../../components';
-import {launchCamera} from 'react-native-image-picker';
+import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {showMessage} from 'react-native-flash-message';
 import Geolocation from 'react-native-geolocation-service';
 import axios from 'axios';
@@ -29,6 +30,7 @@ import {
   getFileDisplayInfo,
   showUploadErrorMessage,
 } from '../../utils/fileUpload';
+import {CLOUDINARY_UPLOAD_URL} from '../../config/Cloudinary';
 
 const Scan = ({navigation}: {navigation: any}) => {
   const [tanggal, setTanggal] = useState('');
@@ -63,6 +65,45 @@ const Scan = ({navigation}: {navigation: any}) => {
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
   const [localFilePath, setLocalFilePath] = useState<string | null>(null);
+
+  // New states for kegiatan dropdown and image uploads
+  const [kegiatan, setKegiatan] = useState<string>('');
+  const [showKegiatanDropdown, setShowKegiatanDropdown] = useState(false);
+  const [additionalImages, setAdditionalImages] = useState<Array<{uri: string; base64?: string}>>([]);
+
+  const kegiatanOptions = [
+    {label: 'Pilih Kegiatan', value: ''},
+    {label: 'Rapat', value: 'rapat'},
+    {label: 'Dinas Luar', value: 'dinas luar'},
+  ];
+
+  // Auto-fill keterangan based on kegiatan selection
+  const getDefaultKeterangan = (kegiatanValue: string): string => {
+    switch (kegiatanValue) {
+      case 'rapat':
+        return 'Menghadiri rapat dinas sesuai dengan jadwal yang telah ditentukan.';
+      case 'dinas luar':
+        return 'Melaksanakan tugas dinas luar kantor sesuai dengan surat perintah tugas.';
+      default:
+        return '';
+    }
+  };
+
+  // Handle kegiatan selection with auto-fill keterangan
+  const handleKegiatanSelection = (selectedKegiatan: string) => {
+    setKegiatan(selectedKegiatan);
+    
+    // Auto-fill keterangan when kegiatan is selected
+    if (selectedKegiatan) {
+      const defaultKeterangan = getDefaultKeterangan(selectedKegiatan);
+      setKeterangan(defaultKeterangan);
+    } else {
+      // Clear keterangan when no kegiatan is selected
+      setKeterangan('');
+    }
+    
+    setShowKegiatanDropdown(false);
+  };
 
   // Get current user function
   const getCurrentUser = () => {
@@ -488,7 +529,7 @@ const Scan = ({navigation}: {navigation: any}) => {
 
       const asset = result.assets[0];
       setPhoto({
-        uri: asset.uri,
+        uri: asset.uri || '',
         base64: asset.base64, // Store base64 data
       });
 
@@ -605,6 +646,103 @@ const Scan = ({navigation}: {navigation: any}) => {
     setUploadedFileUrl(null);
   };
 
+  // Show image picker options
+  const showImagePickerOptions = () => {
+    Alert.alert(
+      'Pilih Gambar',
+      'Pilih sumber gambar',
+      [
+        {
+          text: 'Kamera',
+          onPress: () => handleImagePicker('camera'),
+        },
+        {
+          text: 'Galeri',
+          onPress: () => handleImagePicker('gallery'),
+        },
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Handle additional image capture/selection
+  const handleImagePicker = async (source: 'camera' | 'gallery') => {
+    if (additionalImages.length >= 5) {
+      showMessage({
+        message: 'Limit Reached',
+        description: 'Maximum 5 images allowed',
+        type: 'warning',
+      });
+      return;
+    }
+
+    try {
+      const options = {
+        mediaType: 'photo' as const,
+        includeBase64: true,
+        quality: 0.7 as const,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        saveToPhotos: true,
+      };
+
+      const result = source === 'camera' 
+        ? await launchCamera({...options, cameraType: 'back'})
+        : await launchImageLibrary(options);
+
+      if (result.didCancel) {
+        showMessage({
+          message: 'Warning',
+          description: source === 'camera' ? 'Taking Photo Canceled' : 'Image Selection Canceled',
+          type: 'warning',
+        });
+        return;
+      }
+
+      if (result.errorCode || !result.assets?.[0]?.uri) {
+        throw new Error(result.errorMessage || `Failed to ${source === 'camera' ? 'take photo' : 'select image'}`);
+      }
+
+      const asset = result.assets[0];
+      if (asset.uri && asset.base64) {
+        const newImage = {
+          uri: asset.uri,
+          base64: asset.base64,
+        };
+
+        setAdditionalImages(prev => [...prev, newImage]);
+        
+        showMessage({
+          message: 'Image Added',
+          description: `Image ${additionalImages.length + 1} added successfully`,
+          type: 'success',
+          duration: 2000,
+        });
+      }
+    } catch (error: any) {
+      showMessage({
+        message: 'Error',
+        description: error.message,
+        type: 'danger',
+      });
+    }
+  };
+
+  // Handle additional image capture (wrapper for backward compatibility)
+  const handleAddImage = () => {
+    showImagePickerOptions();
+  };
+
+  // Remove additional image
+  const handleRemoveImage = (index: number) => {
+    setAdditionalImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+
   // Open file with app chooser - works with local file
   const openFilePreview = async () => {
     if (!selectedFile || !localFilePath) {
@@ -668,6 +806,25 @@ const Scan = ({navigation}: {navigation: any}) => {
       return;
     }
 
+    // Validation for kegiatan-dependent fields
+    if (kegiatan && !keterangan.trim()) {
+      showMessage({
+        message: 'Warning',
+        description: 'Keterangan is required when kegiatan is selected',
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (kegiatan && additionalImages.length === 0) {
+      showMessage({
+        message: 'Warning',
+        description: 'At least one additional image is required when kegiatan is selected',
+        type: 'warning',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -697,6 +854,15 @@ const Scan = ({navigation}: {navigation: any}) => {
           });
         }
       }
+
+      // Store additional images as base64 in Firebase (no Cloudinary upload for images)
+      const additionalImagesBase64 = additionalImages.length > 0 
+        ? additionalImages.map((image, index) => ({
+            data: `data:image/jpeg;base64,${image.base64}`,
+            index: index + 1,
+            uploadedAt: new Date().toISOString(),
+          }))
+        : [];
 
       // Get Firebase Realtime Database instance
       const database = getDatabase(app);
@@ -730,6 +896,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         tanggal,
         waktu,
         keterangan: keterangan.trim(), // Add keterangan field
+        kegiatan: kegiatan || null, // Add kegiatan field
         status: attendanceStatus, // Add attendance status based on time
         timestamp: Date.now(), // Add timestamp for sorting
         createdAt: new Date().toISOString(), // Human readable timestamp
@@ -742,6 +909,10 @@ const Scan = ({navigation}: {navigation: any}) => {
             size: selectedFile.size,
             uploadedAt: new Date().toISOString(),
           },
+        }),
+        // Additional images data (optional) - stored as base64 in Firebase
+        ...(additionalImagesBase64.length > 0 && {
+          additionalImages: additionalImagesBase64,
         }),
         // Additional metadata
         deviceInfo: {
@@ -775,7 +946,7 @@ const Scan = ({navigation}: {navigation: any}) => {
         message: 'Success!',
         description: `Data is saved for ${
           currentUser.email || currentUser.displayName
-        }\nStatus: ${attendanceStatus}${fileUploadUrl ? '\nFile uploaded successfully' : ''}`,
+        }\nStatus: ${attendanceStatus}${fileUploadUrl ? '\nFile uploaded successfully' : ''}${additionalImagesBase64.length > 0 ? `\n${additionalImagesBase64.length} images saved` : ''}`,
         type: 'success',
         duration: 3000,
       });
@@ -914,13 +1085,44 @@ const Scan = ({navigation}: {navigation: any}) => {
             </View>
           </View>
 
+          {/* Kegiatan Dropdown Section */}
+          <View style={styles.kegiatanSection}>
+            <Text style={styles.sectionLabel}>Kegiatan (Opsional)</Text>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowKegiatanDropdown(!showKegiatanDropdown)}>
+              <Text style={[styles.dropdownText, !kegiatan && styles.placeholderText]}>
+                {kegiatan ? kegiatanOptions.find(opt => opt.value === kegiatan)?.label : 'Pilih Kegiatan'}
+              </Text>
+              <Text style={styles.dropdownArrow}>{showKegiatanDropdown ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            
+            {showKegiatanDropdown && (
+              <View style={styles.dropdownList}>
+                {kegiatanOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={styles.dropdownItem}
+                    onPress={() => handleKegiatanSelection(option.value)}>
+                    <Text style={styles.dropdownItemText}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
           <View style={styles.keteranganSection}>
-            <Text style={styles.sectionLabel}>Keterangan</Text>
+            <Text style={styles.sectionLabel}>
+              Keterangan {kegiatan ? '*' : '(Opsional)'}
+            </Text>
             <RNTextInput
               value={keterangan}
               onChangeText={setKeterangan}
-              style={styles.keteranganInput}
-              placeholder="Masukkan keterangan absensi (opsional)"
+              style={[
+                styles.keteranganInput,
+                kegiatan && styles.mandatoryInput
+              ]}
+              placeholder={kegiatan ? 'Masukkan keterangan (wajib diisi)' : 'Masukkan keterangan absensi (opsional)'}
               placeholderTextColor="#999"
               multiline={true}
               numberOfLines={4}
@@ -928,9 +1130,61 @@ const Scan = ({navigation}: {navigation: any}) => {
             />
           </View>
 
+          {/* Image Upload Section - Moved after keterangan */}
+          <View style={styles.imageUploadSection}>
+            <Text style={styles.sectionLabel}>
+              Upload Gambar {kegiatan ? '*' : '(Opsional)'}
+            </Text>
+            <Text style={styles.fileUploadSubtitle}>
+              Upload gambar pendukung (Max 5 gambar)
+            </Text>
+            
+            {additionalImages.length > 0 ? (
+              <View>
+                <View style={styles.imageGrid}>
+                  {additionalImages.map((image, index) => (
+                    <View key={index} style={styles.imageContainer}>
+                      <Image source={{uri: image.uri}} style={styles.imagePreview} />
+                      <TouchableOpacity
+                        onPress={() => handleRemoveImage(index)}
+                        style={styles.removeImageButton}>
+                        <Text style={styles.removeImageText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+                
+                {additionalImages.length < 5 && (
+                  <TouchableOpacity
+                    onPress={handleAddImage}
+                    style={styles.fileUploadButton}>
+                    <Text style={styles.fileUploadIcon}>📸</Text>
+                    <Text style={styles.fileUploadText}>Tambah Gambar</Text>
+                    <Text style={styles.fileUploadSubtext}>
+                      {additionalImages.length}/5 gambar
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleAddImage}
+                style={[
+                  styles.fileUploadButton,
+                  kegiatan && additionalImages.length === 0 ? styles.mandatoryField : null
+                ]}>
+                <Text style={styles.fileUploadIcon}>📸</Text>
+                <Text style={styles.fileUploadText}>Tambah Gambar</Text>
+                <Text style={styles.fileUploadSubtext}>
+                  Tap untuk mengambil/memilih gambar
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* File Upload Section */}
           <View style={styles.fileUploadSection}>
-            <Text style={styles.sectionLabel}>Upload File (Opsional)</Text>
+            <Text style={styles.sectionLabel}>Upload File (Opsional) dalam pengembangan</Text>
             <Text style={styles.fileUploadSubtitle}>
               Upload dokumen pendukung (PDF, DOC, DOCX - Max 5MB)
             </Text>
@@ -1151,6 +1405,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 5,
   },
+  mandatoryInput: {
+    borderColor: '#ff6b6b',
+  },
   // File upload styles
   fileUploadSection: {
     marginTop: 20,
@@ -1229,15 +1486,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f8f9ff',
   },
-  uploadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  uploadingText: {
-    marginLeft: 10,
-    fontSize: 14,
-    color: '#0066CC',
-  },
   fileUploadIcon: {
     fontSize: 24,
     marginBottom: 8,
@@ -1251,6 +1499,89 @@ const styles = StyleSheet.create({
   fileUploadSubtext: {
     fontSize: 12,
     color: '#666',
+  },
+  // Kegiatan dropdown styles
+  kegiatanSection: {
+    marginTop: 20,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 12,
+    backgroundColor: '#fff',
+    marginTop: 5,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  dropdownArrow: {
+    fontSize: 12,
+    color: '#666',
+  },
+  dropdownList: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderTopWidth: 0,
+    borderRadius: 5,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    backgroundColor: '#fff',
+    maxHeight: 150,
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  // Image upload styles
+  imageUploadSection: {
+    marginTop: 20,
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  imageContainer: {
+    width: '30%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 53, 69, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeImageText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  mandatoryField: {
+    borderColor: '#ff6b6b',
   },
 });
 

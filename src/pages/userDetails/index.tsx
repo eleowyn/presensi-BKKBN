@@ -621,7 +621,7 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
       <SafeAreaView style={styles.container}>
         <View style={styles.contentWrapper}>
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-            <Header text="User Details"/>
+            <Header text="Attendance Details"/>
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>No attendance data available</Text>
               <Button 
@@ -640,7 +640,7 @@ const UserDetail = ({ route, navigation }: { route: any; navigation: any }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.contentWrapper}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <Header text="User Details"/>
+          <Header text="Attendance Details"/>
           
           {/* Large attendance photo */}
           <View style={styles.imageContainer}>

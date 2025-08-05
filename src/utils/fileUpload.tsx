@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig, transformCloudinaryUrl, fixCloudinaryUrl } from '../config/Cloudinary';
+import { cloudinaryConfig, fixCloudinaryUrl } from '../config/Cloudinary';
 import { showMessage } from 'react-native-flash-message';
 
 // Supported file types
@@ -56,20 +56,33 @@ export const uploadFileToCloudinary = async (file: any): Promise<string> => {
     // Add upload preset
     formData.append('upload_preset', cloudinaryConfig.upload_preset);
     
-    // Add resource type for non-image files
-    formData.append('resource_type', 'auto');
+    // Add resource type for non-image files (use 'raw' for documents)
+    formData.append('resource_type', 'raw');
     
     // Add folder for organization (optional)
     formData.append('folder', 'attendance_documents');
     
     // Add timestamp for unique naming
     const timestamp = Date.now();
-    formData.append('public_id', `doc_${timestamp}_${file.name.split('.')[0]}`);
-
+    const cleanFileName = file.name.split('.')[0]
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .substring(0, 50); // Limit length to avoid issues
+    
+    const publicId = `doc_${timestamp}_${cleanFileName}`;
+    formData.append('public_id', publicId);
+    
+    console.log('Generated public_id:', publicId);
     console.log('Uploading file to Cloudinary:', file.name);
+    console.log('Resource type: raw');
 
-    // Upload to Cloudinary
-    const response = await axios.post(CLOUDINARY_UPLOAD_URL, formData, {
+    // Use the raw upload URL for documents
+    const rawUploadUrl = `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloud_name}/raw/upload`;
+    console.log('Upload URL:', rawUploadUrl);
+
+    // Upload to Cloudinary using raw endpoint
+    const response = await axios.post(rawUploadUrl, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -77,12 +90,11 @@ export const uploadFileToCloudinary = async (file: any): Promise<string> => {
     });
 
     if (response.data && response.data.secure_url) {
-      // Transform the URL based on file type to ensure correct delivery
-      const transformedUrl = transformCloudinaryUrl(response.data.secure_url, file.type);
-      console.log('File uploaded successfully:', transformedUrl);
-      console.log('Original URL:', response.data.secure_url);
-      console.log('Transformed URL:', transformedUrl);
-      return transformedUrl;
+      console.log('File uploaded successfully:', response.data.secure_url);
+      console.log('Resource type from response:', response.data.resource_type);
+      
+      // The URL should already be correct since we used the raw endpoint
+      return response.data.secure_url;
     } else {
       throw new Error('Upload failed: No URL returned from Cloudinary');
     }
@@ -93,6 +105,7 @@ export const uploadFileToCloudinary = async (file: any): Promise<string> => {
     
     if (error.response) {
       // Server responded with error
+      console.error('Error response data:', error.response.data);
       errorMessage = `Upload failed: ${error.response.data?.error?.message || error.response.statusText}`;
     } else if (error.request) {
       // Network error
@@ -169,4 +182,55 @@ export const getFileTypeFromUrl = (url: string): string => {
 export const autoFixCloudinaryUrl = (url: string): string => {
   const fileType = getFileTypeFromUrl(url);
   return fixExistingCloudinaryUrl(url, fileType);
+};
+
+// Fix broken Cloudinary URLs that might have wrong resource type
+// This specifically handles URLs that were uploaded with wrong resource_type
+export const fixBrokenCloudinaryUrl = (url: string): string => {
+  if (!url || !url.includes('cloudinary.com')) {
+    return url;
+  }
+
+  // If URL contains /image/upload/ but should be /raw/upload/ for documents
+  if (url.includes('/image/upload/')) {
+    const fileType = getFileTypeFromUrl(url);
+    if (SUPPORTED_FILE_TYPES.includes(fileType)) {
+      return url.replace('/image/upload/', '/raw/upload/');
+    }
+  }
+
+  return url;
+};
+
+// Test if a Cloudinary URL is accessible
+export const testCloudinaryUrl = async (url: string): Promise<boolean> => {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
+  } catch (error) {
+    console.error('URL test failed:', error);
+    return false;
+  }
+};
+
+// Auto-fix and test Cloudinary URL
+export const autoFixAndTestUrl = async (url: string): Promise<string> => {
+  // First try the original URL
+  const isOriginalWorking = await testCloudinaryUrl(url);
+  if (isOriginalWorking) {
+    return url;
+  }
+
+  // Try fixing the URL
+  const fixedUrl = fixBrokenCloudinaryUrl(url);
+  const isFixedWorking = await testCloudinaryUrl(fixedUrl);
+  
+  if (isFixedWorking) {
+    console.log('Fixed broken Cloudinary URL:', { original: url, fixed: fixedUrl });
+    return fixedUrl;
+  }
+
+  // If neither works, return the fixed URL anyway (it's more likely to be correct)
+  console.warn('Could not verify Cloudinary URL, returning fixed version:', fixedUrl);
+  return fixedUrl;
 };

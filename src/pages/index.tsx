@@ -10,6 +10,7 @@ import Lists from './adminList';
 import UserDetail from './userDetails';
 import UserProfile from './userProfile';
 import FilePreview from './filePreview';
+import ScanDetails from './scanDetails';
 export {
   SplashScreen,
   Login,
@@ -22,4 +23,5 @@ export {
   Lists,
   UserDetail,
   UserProfile,
-  FilePreview};
+  FilePreview,
+  ScanDetails};
