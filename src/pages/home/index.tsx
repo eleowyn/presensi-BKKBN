@@ -64,8 +64,8 @@ const Home = ({navigation}) => {
         if (!user) {
           setLoading(false);
           showMessage({
-            message: 'Error',
-            description: 'User not authenticated',
+            message: 'Eror',
+            description: 'User tidak terautentikasi',
             type: 'danger',
             duration: 3000,
           });
@@ -134,10 +134,7 @@ const Home = ({navigation}) => {
 
                 // Pengecekan tanggal tidak valid
                 if (isNaN(recordDate.getTime())) {
-                  console.warn(
-                    'Invalid date format, skipping record:',
-                    recordTimestamp,
-                  );
+                  console.warn('Format tanggal tidak valid', recordTimestamp);
                   return;
                 }
 
@@ -221,10 +218,10 @@ const Home = ({navigation}) => {
             setLoading(false);
           },
           error => {
-            console.error('Error reading attendance data:', error);
+            console.error('Eror memuat data kehadiran', error);
             showMessage({
-              message: 'Error',
-              description: 'Failed to load attendance data',
+              message: 'Eror',
+              description: 'Gagal memuat data kehadiran',
               type: 'danger',
               duration: 3000,
             });
@@ -232,10 +229,10 @@ const Home = ({navigation}) => {
           },
         );
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error mengambil data:', error);
         showMessage({
           message: 'Error',
-          description: 'An error occurred while loading data',
+          description: 'Error muncul saat memuat data',
           type: 'danger',
           duration: 3000,
         });
@@ -250,7 +247,7 @@ const Home = ({navigation}) => {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>Loading data...</Text>
+        <Text style={styles.loadingText}>Memuat data...</Text>
 
         {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
       </SafeAreaView>
@@ -262,23 +259,23 @@ const Home = ({navigation}) => {
       <ScrollView showsVerticalScrollIndicator={false}>
         <Header text={`Hai, ${firstname}`} />
 
-        <TextTitle text={`Here's Your Weekly Statistics`} />
+        <TextTitle text={`Statistik mingguan anda`} />
         <Text style={styles.weekRange}>Minggu Ini: {currentWeekRange}</Text>
         <WeeklyChart
-          Attendance={attendanceWeekly}
-          Late={lateWeekly}
-          Excused={excusedWeekly}
-          Unexcused={unexcusedWeekly}
+          Hadir={attendanceWeekly}
+          Terlambat={lateWeekly}
+          Izin={excusedWeekly}
+          Absen={unexcusedWeekly}
         />
 
         <View style={styles.sectionSpacer} />
 
-        <TextTitle text={`Here's Your Overall Statistics`} />
+        <TextTitle text={`Statistik keseluruhan anda`} />
         <OverallChart
-          Attendance={attendanceOverall}
-          Late={lateOverall}
-          Excused={excusedOverall}
-          Unexcused={unexcusedOverall}
+          Hadir={attendanceOverall}
+          Terlambat={lateOverall}
+          Izin={excusedOverall}
+          Absen={unexcusedOverall}
         />
 
         <View style={styles.bottomSpacer} />

@@ -32,8 +32,8 @@ const SignIn = ({navigation}: {navigation: any}) => {
   const handleLogin = async () => {
     if (!email || !password) {
       showMessage({
-        message: 'Incomplete Form',
-        description: 'Email and password are required',
+        message: 'Tidak lengkap',
+        description: 'Email dan password wajib diisi',
         type: 'warning',
         duration: 3000,
       });
@@ -47,7 +47,7 @@ const SignIn = ({navigation}: {navigation: any}) => {
       await signInWithEmailAndPassword(auth, email, password);
 
       showMessage({
-        message: 'Login Successful',
+        message: 'Berhasil masuk',
         type: 'success',
         duration: 3000,
       });
@@ -64,30 +64,30 @@ const SignIn = ({navigation}: {navigation: any}) => {
         );
       }
     } catch (error: any) {
-      let errorMessage = 'Login failed. Please try again.';
+      let errorMessage = 'Gagal masuk. Coba lagi.';
 
       switch (error.code) {
         case 'auth/invalid-email':
-          errorMessage = 'Invalid email format';
+          errorMessage = 'Format email salah';
           break;
         case 'auth/user-disabled':
-          errorMessage = 'Account is disabled';
+          errorMessage = 'Akun anda telah dihapus';
           break;
         case 'auth/user-not-found':
-          errorMessage = 'Account not found';
+          errorMessage = 'Akun tidak ditemukan';
           break;
         case 'auth/wrong-password':
-          errorMessage = 'Incorrect password';
+          errorMessage = 'Password salah';
           break;
         case 'auth/too-many-requests':
-          errorMessage = 'Too many failed attempts. Try again later';
+          errorMessage = 'Terlalu banyak permintaan. Coba lagi nanti';
           break;
         default:
-          errorMessage = 'An error occurred. Please try again';
+          errorMessage = 'Gagal masuk. Coba lagi.';
       }
 
       showMessage({
-        message: 'Login Error',
+        message: 'Kesalahan',
         description: errorMessage,
         type: 'danger',
         duration: 4000,
@@ -100,8 +100,8 @@ const SignIn = ({navigation}: {navigation: any}) => {
   const handleResetPassword = async () => {
     if (!email) {
       showMessage({
-        message: 'Email Required',
-        description: 'Please enter your email to reset password',
+        message: 'Email wajib',
+        description: 'Masukkan email untuk reset password',
         type: 'warning',
         duration: 3000,
       });
@@ -116,8 +116,8 @@ const SignIn = ({navigation}: {navigation: any}) => {
 
       setResetEmailSent(true);
       showMessage({
-        message: 'Password Reset Email Sent',
-        description: 'Please check your email for password reset instructions',
+        message: 'Email reset password telah dikirim ',
+        description: 'Cek email untuk melanjutkan reset password',
         type: 'success',
         duration: 5000,
       });
@@ -126,17 +126,17 @@ const SignIn = ({navigation}: {navigation: any}) => {
 
       switch (error.code) {
         case 'auth/invalid-email':
-          errorMessage = 'Invalid email format';
+          errorMessage = 'Email tidak valid';
           break;
         case 'auth/user-not-found':
-          errorMessage = 'Account not found';
+          errorMessage = 'Email tidak ditemukan';
           break;
         default:
-          errorMessage = 'An error occurred. Please try again';
+          errorMessage = 'Gagal masuk. Coba lagi.';
       }
 
       showMessage({
-        message: 'Password Reset Error',
+        message: 'Kesalahan',
         description: errorMessage,
         type: 'danger',
         duration: 4000,
@@ -150,12 +150,12 @@ const SignIn = ({navigation}: {navigation: any}) => {
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
         <Logo style={styles.logo} />
-        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.title}>Selamat Datang Kembali</Text>
         <View style={styles.inputContainer}>
           {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
-          <TextTitle text="Email Address" />
+          <TextTitle text="Alamat Email" />
           <TextInput
-            placeholder="Email Address"
+            placeholder="Alamat Email"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -191,15 +191,15 @@ const SignIn = ({navigation}: {navigation: any}) => {
           )}
 
           <Button
-            text={isLoading ? 'Processing...' : 'Log In'}
+            text={isLoading ? 'Memproses...' : 'Masuk'}
             onPress={handleLogin}
             disabled={isLoading}
           />
 
           <View style={styles.signupContainer}>
-            <Text style={styles.account}>Doesn't have an account?</Text>
+            <Text style={styles.account}>Belum punya akun?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-              <Text style={styles.signup}>Sign Up</Text>
+              <Text style={styles.signup}>Daftar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -281,7 +281,9 @@ const styles = StyleSheet.create({
   signup: {
     fontFamily: 'Poppins-Bold',
     fontSize: 11,
-    marginLeft: 5,
     color: '#0066CC',
+    paddingHorizontal: 7,
+    borderRadius: 10,
+    alignSelf: 'center',
   },
 });

@@ -41,7 +41,7 @@ interface NavigationProps {
 }
 
 const departments = [
-  'All Departments',
+  'Semua Departemen',
   'PERENCANAAN DAN MANAJEMEN KINERJA',
   'KEUANGAN DAN ANGGARAN',
   'HUKUM, KEPEGAWAIAN DAN PELAYANAN PUBLIK',
@@ -59,7 +59,7 @@ const departments = [
 ];
 
 const sessionStatuses = [
-  'All Sessions',
+  'Semua Sesi',
   'Present',
   'Late',
   'Excused',
@@ -67,7 +67,7 @@ const sessionStatuses = [
 ];
 
 const Lists = ({navigation}: {navigation: NavigationProps}) => {
-  const [selectedDept, setSelectedDept] = useState('All Departments');
+  const [selectedDept, setSelectedDept] = useState('Semua Departemen');
   const [searchText, setSearchText] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [usersData, setUsersData] = useState<Record<string, UserData>>({});
@@ -78,7 +78,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
 
   // New state for date and session filtering
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedSession, setSelectedSession] = useState('All Sessions');
+  const [selectedSession, setSelectedSession] = useState('Semua Sesi');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSessionDropdown, setShowSessionDropdown] = useState(false);
   const [datePickerDate, setDatePickerDate] = useState(new Date());
@@ -281,7 +281,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
     }
 
     // Filter by department
-    if (selectedDept && selectedDept !== 'All Departments') {
+    if (selectedDept && selectedDept !== 'Semua Departemen') {
       filtered = filtered.filter((record: AttendanceRecord) => {
         const userData = usersData[record.userId];
         const userDepartment = userData?.department || '';
@@ -334,7 +334,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
     }
 
     // Filter by session status
-    if (selectedSession && selectedSession !== 'All Sessions') {
+    if (selectedSession && selectedSession !== 'Semua Sesi') {
       filtered = filtered.filter((record: AttendanceRecord) => {
         const status = getAttendanceStatus(record);
         return status === selectedSession;
@@ -352,7 +352,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0000ff" />
-          <Text style={styles.loadingText}>Loading attendance records...</Text>
+          <Text style={styles.loadingText}>Memuat riwayat kehadiran...</Text>
         </View>
       );
     }
@@ -411,19 +411,19 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        <Header text="Lists" />
+        <Header text="Daftar" />
 
         <View style={styles.textinput}>
           {/* Department and Name Search Row */}
           <TextInputAdmin
             style={{marginBottom: 15}}
-            text="Department"
+            text="Departemen"
             leftValue={selectedDept}
             onLeftPress={() => setShowDropdown(!showDropdown)}
             onLeftChange={() => {}}
             onRightPress={() => {}}
             isLeftDropdown={true}
-            placeholder="Search Name"
+            placeholder="Cari Nama"
             rightValue={searchText}
             onRightChange={setSearchText}
           />
@@ -458,7 +458,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
             onLeftPress={() => setShowDatePicker(true)}
             onLeftChange={() => {}}
             isLeftDropdown={true}
-            placeholder="Session Status"
+            placeholder="Status Sesi"
             rightValue={selectedSession}
             onRightPress={() => setShowSessionDropdown(!showSessionDropdown)}
             onRightChange={() => {}}
@@ -471,7 +471,9 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
               <TouchableOpacity
                 style={styles.clearButton}
                 onPress={clearDateFilter}>
-                <Text style={styles.clearButtonText}>Clear Date Filter</Text>
+                <Text style={styles.clearButtonText}>
+                  Bersihkan Filter Tanggal
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -522,9 +524,9 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
             onRequestClose={() => setShowDatePicker(false)}>
             <View style={styles.modalOverlay}>
               <View style={styles.datePickerContainer}>
-                <Text style={styles.datePickerTitle}>Select Date</Text>
+                <Text style={styles.datePickerTitle}>Pilih tanggal</Text>
                 <Text style={styles.datePickerSubtitle}>
-                  Choose a date to filter attendance records
+                  Pilih tanggal untuk melihat data berdasarkan tanggal
                 </Text>
 
                 {/* Quick Date Options */}
@@ -532,7 +534,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
                   <TouchableOpacity
                     style={styles.quickDateButton}
                     onPress={() => handleQuickDateSelect(new Date())}>
-                    <Text style={styles.quickDateText}>Today</Text>
+                    <Text style={styles.quickDateText}>Hari ini</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.quickDateButton}
@@ -541,7 +543,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
                       yesterday.setDate(yesterday.getDate() - 1);
                       handleQuickDateSelect(yesterday);
                     }}>
-                    <Text style={styles.quickDateText}>Yesterday</Text>
+                    <Text style={styles.quickDateText}>Kemarin</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.quickDateButton}
@@ -550,7 +552,7 @@ const Lists = ({navigation}: {navigation: NavigationProps}) => {
                       lastWeek.setDate(lastWeek.getDate() - 7);
                       handleQuickDateSelect(lastWeek);
                     }}>
-                    <Text style={styles.quickDateText}>Last Week</Text>
+                    <Text style={styles.quickDateText}>Minggu lalu</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -677,7 +679,7 @@ const AttendanceCard = ({
       <View style={styles.detailsContainer}>
         <View style={styles.textSection}>
           <View style={styles.row}>
-            <Text style={styles.label}>Name:</Text>
+            <Text style={styles.label}>Nama:</Text>
             <Text style={styles.value} numberOfLines={1} ellipsizeMode="tail">
               {userData?.fullName || 'Unknown User'}
             </Text>
@@ -689,14 +691,14 @@ const AttendanceCard = ({
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Department:</Text>
+            <Text style={styles.label}>Departemen:</Text>
             <Text style={styles.value} numberOfLines={1} ellipsizeMode="tail">
               {userData?.department || 'Not specified'}
             </Text>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Time:</Text>
+            <Text style={styles.label}>Waktu:</Text>
             <Text style={styles.value}>
               {attendanceRecord.waktu || 'Not recorded'}
             </Text>
@@ -704,7 +706,7 @@ const AttendanceCard = ({
 
           {attendanceRecord.location?.address && (
             <View style={styles.row}>
-              <Text style={styles.label}>Location:</Text>
+              <Text style={styles.label}>Lokasi:</Text>
               <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
                 {attendanceRecord.location.address}
               </Text>
@@ -714,7 +716,7 @@ const AttendanceCard = ({
           {/* Show confirmation status if available */}
           {attendanceRecord.confirmed && (
             <View style={styles.row}>
-              <Text style={styles.label}>Confirmed:</Text>
+              <Text style={styles.label}>Konfirmasi:</Text>
               <Text
                 style={[
                   styles.value,

@@ -40,7 +40,6 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
   const auth = getAuth();
 
   const departments = [
-    'All Departments',
     'PERENCANAAN DAN MANAJEMEN KINERJA',
     'KEUANGAN DAN ANGGARAN',
     'HUKUM, KEPEGAWAIAN DAN PELAYANAN PUBLIK',
@@ -133,50 +132,46 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
   }, [users, searchName, selectedDepartment]);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout from Admin',
-      'Are you sure you want to logout from admin account?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Keluar dari Admin', 'Anda yakin ingin keluar dari Admin?', [
+      {
+        text: 'Batal',
+        style: 'cancel',
+      },
+      {
+        text: 'Keluar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            showMessage({
+              message: 'Admin berhasil keluar',
+              type: 'success',
+              duration: 2000,
+            });
+            // Navigate back to login screen
+            navigation.reset({
+              index: 0,
+              routes: [{name: 'Login'}],
+            });
+          } catch (error) {
+            console.error('Logout error:', error);
+            showMessage({
+              message: 'Logout failed',
+              description: 'Please try again',
+              type: 'danger',
+              duration: 3000,
+            });
+          }
         },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut(auth);
-              showMessage({
-                message: 'Admin logged out successfully',
-                type: 'success',
-                duration: 2000,
-              });
-              // Navigate back to login screen
-              navigation.reset({
-                index: 0,
-                routes: [{name: 'Login'}],
-              });
-            } catch (error) {
-              console.error('Logout error:', error);
-              showMessage({
-                message: 'Logout failed',
-                description: 'Please try again',
-                type: 'danger',
-                duration: 3000,
-              });
-            }
-          },
-        },
-      ],
-    );
+      },
+    ]);
   };
 
   const renderUserCards = () => {
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
-          <Text>Loading users...</Text>
+          <Text>Memuat user...</Text>
         </View>
       );
     }
@@ -184,7 +179,7 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
     if (filteredUsers.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Text>No users found</Text>
+          <Text>Tidak ditemukan</Text>
         </View>
       );
     }
@@ -192,7 +187,9 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
     // Group users by first letter of their name
     const groupedUsers: Record<string, UserData[]> = {};
     filteredUsers.forEach(user => {
-      const firstLetter = (user.fullName || 'Unknown').charAt(0).toUpperCase();
+      const firstLetter = (user.fullName || 'Tidak diketahui')
+        .charAt(0)
+        .toUpperCase();
       if (!groupedUsers[firstLetter]) {
         groupedUsers[firstLetter] = [];
       }
@@ -241,7 +238,7 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
             <TouchableOpacity
               onPress={handleLogout}
               style={styles.logoutButton}>
-              <Text style={styles.logoutButtonText}>Logout</Text>
+              <Text style={styles.logoutButtonText}>Keluar</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.filterContainer}>
@@ -256,7 +253,7 @@ const DashboardAdmin = ({navigation}: {navigation: any}) => {
               </TouchableOpacity>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search Name"
+                placeholder="Cari nama"
                 placeholderTextColor="#999"
                 value={searchName}
                 onChangeText={setSearchName}
@@ -294,34 +291,34 @@ const UserCard = ({user, onPress}: {user: UserData; onPress: () => void}) => {
       <View style={styles.detailsContainer}>
         <View style={styles.textSection}>
           <View style={styles.row}>
-            <Text style={styles.label}>Name:</Text>
+            <Text style={styles.label}>Nama:</Text>
             <Text style={styles.value} numberOfLines={1} ellipsizeMode="tail">
-              {user.fullName || 'Unknown User'}
+              {user.fullName || 'Tidak diketahui'}
             </Text>
           </View>
 
           <View style={styles.row}>
             <Text style={styles.label}>NIP:</Text>
-            <Text style={styles.value}>{user.NIP || 'Not specified'}</Text>
+            <Text style={styles.value}>{user.NIP || 'Tidak diketahui'}</Text>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Department:</Text>
+            <Text style={styles.label}>Departemen:</Text>
             <Text style={styles.value} numberOfLines={2} ellipsizeMode="tail">
-              {user.department || 'Not specified'}
+              {user.department || 'Tidak diketahui'}
             </Text>
           </View>
 
           <View style={styles.row}>
             <Text style={styles.label}>Email:</Text>
             <Text style={styles.value} numberOfLines={1} ellipsizeMode="tail">
-              {user.email || 'No email'}
+              {user.email || 'Tidak diketahui'}
             </Text>
           </View>
 
           {user.startDate && (
             <View style={styles.row}>
-              <Text style={styles.label}>Start Date:</Text>
+              <Text style={styles.label}>Tanggal Mulai:</Text>
               <Text style={styles.value}>{user.startDate}</Text>
             </View>
           )}

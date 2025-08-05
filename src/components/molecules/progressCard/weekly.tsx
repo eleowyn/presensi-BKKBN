@@ -4,26 +4,26 @@ import PieChart from 'react-native-pie-chart';
 
 const WeeklyChart = ({
   size = 150,
-  Attendance = 0,
-  Late = 0,
-  Excused = 0,
-  Unexcused = 0,
+  Hadir = 0,
+  Terlambat = 0,
+  Izin = 0,
+  Absen = 0,
 }) => {
   const CHART_SIZE = size;
-  const TotalMeetings = Attendance + Late + Excused + Unexcused;
+  const TotalMeetings = Hadir + Terlambat + Izin + Absen;
 
   const allSeries = [
     {
-      value: Attendance,
+      value: Hadir,
       color: '#fbd203',
       label: {
-        text: 'Attendance',
+        text: 'Present',
         fontSize: 9,
         fontFamily: 'Poppins-Medium',
       },
     },
     {
-      value: Late,
+      value: Terlambat,
       color: '#ffb300',
       label: {
         text: 'Late',
@@ -32,7 +32,7 @@ const WeeklyChart = ({
       },
     },
     {
-      value: Excused,
+      value: Izin,
       color: '#ff9100',
       label: {
         text: 'Excused',
@@ -41,7 +41,7 @@ const WeeklyChart = ({
       },
     },
     {
-      value: Unexcused,
+      value: Absen,
       color: '#ff6c00',
       label: {
         text: 'Unexcused',
@@ -71,18 +71,18 @@ const WeeklyChart = ({
       <View style={styles.card}>
         <View style={styles.data}>
           <View style={styles.value}>
-            <Text style={styles.font}>Total Record</Text>
-            <Text style={styles.font}>Attendance</Text>
+            <Text style={styles.font}>Total</Text>
+            <Text style={styles.font}>Present</Text>
             <Text style={styles.font}>Late</Text>
             <Text style={styles.font}>Excused</Text>
             <Text style={styles.font}>Unexcused</Text>
           </View>
           <View style={styles.value}>
             <Text style={styles.font}>{TotalMeetings}</Text>
-            <Text style={styles.font}>{Attendance}</Text>
-            <Text style={styles.font}>{Late}</Text>
-            <Text style={styles.font}>{Excused}</Text>
-            <Text style={styles.font}>{Unexcused}</Text>
+            <Text style={styles.font}>{Hadir}</Text>
+            <Text style={styles.font}>{Terlambat}</Text>
+            <Text style={styles.font}>{Izin}</Text>
+            <Text style={styles.font}>{Absen}</Text>
           </View>
         </View>
         <PieChart

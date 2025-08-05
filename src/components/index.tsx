@@ -20,6 +20,7 @@ import {
   TextInputAdmin,
   UserDetailsCard,
   ScanDetailsCard,
+  Days,
 } from './molecules/index';
 export {
   Button,
@@ -41,4 +42,5 @@ export {
   TextInputAdmin,
   UserDetailsCard,
   ScanDetailsCard,
+  Days,
 };

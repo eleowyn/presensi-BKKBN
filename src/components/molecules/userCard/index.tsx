@@ -56,7 +56,7 @@ const Card = () => {
         phoneNumber: user.phoneNumber,
       };
     } catch (error) {
-      console.error('Error getting current user:', error);
+      console.error('Eror mendapatkan data user :', error);
       return null;
     }
   };
@@ -84,7 +84,7 @@ const Card = () => {
       setLoading(false);
       showMessage({
         message: 'Error',
-        description: 'User is not authenticated. Please login',
+        description: 'Harap masuk, user tidak terautentikasi',
         type: 'danger',
       });
       return null;
@@ -120,17 +120,17 @@ const Card = () => {
             setLoading(false);
             setRefreshing(false);
           } catch (error) {
-            console.error('Error processing attendance data:', error);
+            console.error('Eror memproses data kehadiran', error);
             setAttendanceData([]);
             setLoading(false);
             setRefreshing(false);
           }
         },
         error => {
-          console.error('Firebase fetch error:', error);
+          console.error('Mengola data kehadiran gagal', error);
           showMessage({
             message: 'Error',
-            description: 'Failed to get data' + error.message,
+            description: 'Gagal Mendapatkan Data' + error.message,
             type: 'danger',
           });
           setLoading(false);
@@ -253,7 +253,7 @@ const Card = () => {
       console.error('Error showing card details:', error);
       showMessage({
         message: 'Error',
-        description: 'Failed to load data',
+        description: 'Gagal memuat data',
         type: 'danger',
       });
     }
@@ -262,10 +262,10 @@ const Card = () => {
   // Render single card item
   const renderCardItem = ({item}: {item: AttendanceItem}) => {
     try {
-      const status = item.status || 'Unknown';
+      const status = item.status || 'Tidak diketahui';
       const displayLocation = item.location?.placeName
         ? `${item.location.placeName}`
-        : item.location?.address || 'Location Unknown';
+        : item.location?.address || 'Lokasi tidak diketahui';
 
       return (
         <TouchableOpacity onPress={() => handleCardPress(item)}>
@@ -279,14 +279,14 @@ const Card = () => {
             <View style={styles.detailsContainer}>
               <View style={styles.textSection}>
                 <View style={styles.row}>
-                  <Text style={styles.label}>Date:</Text>
+                  <Text style={styles.label}>Tanggal:</Text>
                   <Text style={styles.value}>
                     {item.tanggal || 'Tidak diketahui'}
                   </Text>
                 </View>
 
                 <View style={styles.row}>
-                  <Text style={styles.label}>Location:</Text>
+                  <Text style={styles.label}>Lokasi:</Text>
                   <Text
                     style={styles.value}
                     numberOfLines={2}
@@ -296,14 +296,14 @@ const Card = () => {
                 </View>
 
                 <View style={styles.row}>
-                  <Text style={styles.label}>Time:</Text>
+                  <Text style={styles.label}>Waktu:</Text>
                   <Text style={styles.value}>
                     {item.waktu || 'Tidak diketahui'}
                   </Text>
                 </View>
 
                 <View style={styles.row}>
-                  <Text style={styles.label}>Accuracy:</Text>
+                  <Text style={styles.label}>Akurasi:</Text>
                   <Text
                     style={[
                       styles.value,
@@ -336,7 +336,7 @@ const Card = () => {
                     style={styles.imageBox}
                     resizeMode="cover"
                     onError={error => {
-                      console.error('Image load error:', error);
+                      console.error('Eror memuat gambar', error);
                     }}
                   />
                 ) : (

@@ -5,7 +5,7 @@ import {Buttonnavigation, Card, Header} from '../../components';
 const Activity = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
-      <Header text="History" />
+      <Header text="Riwayat" />
       <Card />
       <View style={{marginBottom: 150}}></View>
       <Buttonnavigation navigation={navigation} />

@@ -135,9 +135,9 @@ const SignUp = ({navigation}) => {
     <ScrollView showsVerticalScrollIndicator={false}>
       <View style={styles.container}>
         <Logo style={styles.logo} />
-        <Text style={styles.title}>Let's Get Started</Text>
+        <Text style={styles.title}>Ayo Mulai</Text>
         <View style={styles.inputContainer}>
-          <TextTitle text="Your Department" />
+          <TextTitle text="Departemen Anda" />
           <TouchableOpacity
             style={styles.dropdownButton}
             onPress={() => setShowDepartmentDropdown(true)}>
@@ -174,7 +174,7 @@ const SignUp = ({navigation}) => {
             </View>
           </Modal>
 
-          <TextTitle text="Your NIP" />
+          <TextTitle text="NIP" />
           <TextInput
             placeholder="NIP"
             value={NIP}
@@ -182,21 +182,21 @@ const SignUp = ({navigation}) => {
             keyboardType="numeric"
           />
           {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
-          <TextTitle text="Your Email Address" />
+          <TextTitle text="Alamat Email" />
           <TextInput
-            placeholder="Email Address"
+            placeholder="Alamat Email"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <TextTitle text="Your Full Name" />
+          <TextTitle text="Nama Lengkap" />
           <TextInput
-            placeholder="Full Name"
+            placeholder="Nama Lengkap"
             value={fullName}
             onChangeText={setFullName}
           />
-          <TextTitle text="Create a Password" />
+          <TextTitle text="Buat Password (Min 6 karakter)*" />
           <TextInput
             placeholder="Password"
             secureTextEntry={true}
@@ -204,14 +204,14 @@ const SignUp = ({navigation}) => {
             onChangeText={setPassword}
           />
           <Button
-            text={isLoading ? 'Processing...' : 'Sign Up'}
+            text={isLoading ? 'Memproses...' : 'Daftar'}
             onPress={handleSignUp}
             disabled={isLoading}
           />
           <View style={styles.loginContainer}>
-            <Text style={styles.account}>Already have an account?</Text>
+            <Text style={styles.account}>Sudah punya akun?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.login}>Log In</Text>
+              <Text style={styles.login}>Masuk</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -263,8 +263,10 @@ const styles = StyleSheet.create({
   login: {
     fontFamily: 'Poppins-Bold',
     fontSize: 11,
-    marginLeft: 5,
     color: '#0066CC',
+    paddingHorizontal: 7,
+    borderRadius: 10,
+    alignSelf: 'center',
   },
   dropdownButton: {
     flexDirection: 'row',

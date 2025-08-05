@@ -10,6 +10,7 @@ import Admincard from './adminCard';
 import TextInputAdmin from './textInputAdmin';
 import UserDetailsCard from './userDetailsCard';
 import ScanDetailsCard from './scanDetailsCard';
+import Days from './days';
 export {
   Card,
   Buttonnavigation,
@@ -22,4 +23,6 @@ export {
   Admincard,
   TextInputAdmin,
   UserDetailsCard,
-  ScanDetailsCard};
+  ScanDetailsCard,
+  Days,
+};

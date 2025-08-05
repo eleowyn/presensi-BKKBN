@@ -39,26 +39,26 @@ const getAttendanceStatus = (waktu: string): string => {
 const UserDetailsCard = ({userData}: {userData: any}) => {
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>User's details</Text>
+      <Text style={styles.title}>Detail</Text>
       <View style={styles.row}>
-        <Text style={styles.label}>Name:</Text>
+        <Text style={styles.label}>Nama:</Text>
         <Text style={styles.value}>
-          {userData?.fullName || userData?.displayName || 'Unknown User'}
+          {userData?.fullName || userData?.displayName || 'Tidak diketahui'}
         </Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>NIP:</Text>
-        <Text style={styles.value}>{userData?.NIP || 'Not specified'}</Text>
+        <Text style={styles.value}>{userData?.NIP || 'Tidak diketahui'}</Text>
       </View>
       <View style={styles.row}>
-        <Text style={styles.label}>Department:</Text>
+        <Text style={styles.label}>Dept:</Text>
         <Text style={styles.value}>
-          {userData?.department || 'Not specified'}
+          {userData?.department || 'Tidak diketahui'}
         </Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>Email:</Text>
-        <Text style={styles.value}>{userData?.email || 'No email'}</Text>
+        <Text style={styles.value}>{userData?.email || 'Tidak diketahui'}</Text>
       </View>
     </View>
   );
@@ -205,12 +205,12 @@ const ScanDetailsCard = ({
 
   return (
     <View style={styles.scanCard}>
-      <Text style={styles.title}>Scan details</Text>
+      <Text style={styles.title}>Detail Scan</Text>
 
       <View style={styles.rowBetween}>
         <View style={styles.textSection}>
           <View style={styles.row}>
-            <Text style={styles.label}>Date:</Text>
+            <Text style={styles.label}>Tanggal:</Text>
             <Text style={styles.value}>
               {attendanceData?.tanggal ||
                 formatDate(attendanceData?.timestamp || 0)}
@@ -218,7 +218,7 @@ const ScanDetailsCard = ({
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Time:</Text>
+            <Text style={styles.label}>Waktu:</Text>
             <Text style={styles.value}>
               {formatTime(attendanceData?.waktu || '')}
             </Text>
@@ -264,7 +264,7 @@ const ScanDetailsCard = ({
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Location:</Text>
+            <Text style={styles.label}>Lokasi:</Text>
             <Text style={styles.locationValue} numberOfLines={3}>
               {formatLocationDisplay()}
             </Text>
@@ -286,7 +286,7 @@ const ScanDetailsCard = ({
           onPress={openMaps}
           activeOpacity={0.7}>
           <Text style={styles.mapIcon}>📍</Text>
-          <Text style={styles.placeholderText}>Open Map</Text>
+          <Text style={styles.placeholderText}>Buka Map</Text>
         </TouchableOpacity>
       </View>
 
@@ -619,7 +619,7 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
     // Show immediate feedback
     Alert.alert(
       'Status Updated',
-      `Status changed to "${newStatus}". Don't forget to confirm to save changes.`,
+      `Status diubah ke "${newStatus}". Jangan lupa konfirmasi perubahan`,
       [{text: 'OK'}],
     );
   };
@@ -627,24 +627,24 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
   // Handle confirm button press
   const handleConfirm = async () => {
     if (isUpdating) {
-      Alert.alert('Please Wait', 'Update in progress...');
+      Alert.alert('Mohon tunggu', 'Pembaharuan dalam proses...');
       return;
     }
 
     const statusText = hasUnsavedChanges
-      ? `confirm this attendance record with the new status "${currentStatus}"`
-      : `confirm this attendance record with status "${currentStatus}"`;
+      ? `konfirmasi riwayat kehadiran ini dengan perubahan status "${currentStatus}"`
+      : `konfirmasi riwayat kehadiran ini dengan status "${currentStatus}"`;
 
     Alert.alert(
-      'Confirm Attendance',
-      `Are you sure you want to ${statusText}?`,
+      'Konfirmasi kehadiran',
+      `Apakan anda yakin untuk  ${statusText}?`,
       [
         {
-          text: 'Cancel',
+          text: 'Batal',
           style: 'cancel',
         },
         {
-          text: 'Confirm',
+          text: 'Konfirmasi',
           onPress: async () => {
             const success = await updateAttendanceInFirebase(
               currentStatus,
@@ -652,8 +652,8 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
             );
             if (success) {
               Alert.alert(
-                'Success',
-                'Attendance record has been confirmed and saved successfully.',
+                'Sukses',
+                'Riwayat kehadiran telah diubah dan diperbaharui',
                 [
                   {
                     text: 'OK',
@@ -680,12 +680,12 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
 
       // Prompt the user before leaving the screen
       Alert.alert(
-        'Discard changes?',
-        'You have unsaved changes. Are you sure you want to discard them and leave?',
+        'Buang perubahan?',
+        'Anda memiliki perbahan yang belum disimpan. Apakah anda ingin buang dan pergo?',
         [
-          {text: "Don't leave", style: 'cancel', onPress: () => {}},
+          {text: 'Jangan pergi', style: 'cancel', onPress: () => {}},
           {
-            text: 'Discard',
+            text: 'Buang',
             style: 'destructive',
             onPress: () => navigation.dispatch(e.data.action),
           },
@@ -706,7 +706,7 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
             contentContainerStyle={styles.scrollContent}>
             <Header text="User Details" />
             <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>No attendance data available</Text>
+              <Text style={styles.errorText}>Tidak ada data kehadiran</Text>
               <Button text="Go Back" onPress={() => navigation.goBack()} />
             </View>
           </ScrollView>
@@ -722,7 +722,7 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}>
-          <Header text="User Details" />
+          <Header text="Detail User" />
 
           {/* Large attendance photo */}
           <View style={styles.imageContainer}>
@@ -769,10 +769,10 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
           <Button
             text={
               isUpdating
-                ? 'Updating...'
+                ? 'Memperbaharui...'
                 : hasUnsavedChanges
-                ? 'Confirm Changes'
-                : 'Confirm'
+                ? 'Konfirmasi Perubahan'
+                : 'Konfirmasi'
             }
             onPress={handleConfirm}
             disabled={isUpdating}
@@ -782,7 +782,7 @@ const UserDetail = ({route, navigation}: {route: any; navigation: any}) => {
           {hasUnsavedChanges && (
             <View style={styles.warningContainer}>
               <Text style={styles.warningText}>
-                ⚠️ You have unsaved changes. Confirm to save them.
+                ⚠️ Perubahan belum disimpan. Silakan konfirmasi.
               </Text>
             </View>
           )}

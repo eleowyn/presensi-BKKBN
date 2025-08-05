@@ -5,6 +5,7 @@ import AccountIcon from './icon/Account';
 import HomeLogo from './icon/Home';
 import ActivityLogo from './icon/Activity';
 import CameraLogo from './icon/Camera';
+import ReportLogo from './icon/Report';
 export {
   Button,
   TextInput,
@@ -13,4 +14,5 @@ export {
   HomeLogo,
   ActivityLogo,
   CameraLogo,
+  ReportLogo,
 };

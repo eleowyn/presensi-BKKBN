@@ -11,13 +11,13 @@ const ButtonNavAdmin = ({navigation}) => {
         style={styles.navItem}
         onPress={() => navigation.navigate('Dashboard')}>
         <HomeLogo />
-        <Text style={styles.label}>Home</Text>
+        <Text style={styles.label}>Beranda</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.navItem}
         onPress={() => navigation.navigate('Lists')}>
         <ActivityLogo />
-        <Text style={styles.label}>Lists</Text>
+        <Text style={styles.label}>Daftar</Text>
       </TouchableOpacity>
     </View>
   );

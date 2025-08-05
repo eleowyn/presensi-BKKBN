@@ -1,6 +1,12 @@
 import {StyleSheet, Text, View, TouchableOpacity} from 'react-native';
 import React from 'react';
-import {AccountIcon, HomeLogo, ActivityLogo, CameraLogo} from '../../atoms';
+import {
+  AccountIcon,
+  HomeLogo,
+  ActivityLogo,
+  CameraLogo,
+  ReportLogo,
+} from '../../atoms';
 
 const Buttonnavigation = ({navigation}) => {
   return (
@@ -11,7 +17,16 @@ const Buttonnavigation = ({navigation}) => {
         <View style={styles.iconContainer}>
           <HomeLogo style={styles.icon} />
         </View>
-        <Text style={styles.text}>Home</Text>
+        <Text style={styles.text}>Beranda</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('Report')}>
+        <View style={styles.iconContainer}>
+          <ReportLogo style={styles.icon} />
+        </View>
+        <Text style={styles.text}>Laporan</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -29,7 +44,7 @@ const Buttonnavigation = ({navigation}) => {
         <View style={styles.iconContainer}>
           <ActivityLogo style={styles.icon} />
         </View>
-        <Text style={styles.text}>History</Text>
+        <Text style={styles.text}>Riwayat</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -38,7 +53,7 @@ const Buttonnavigation = ({navigation}) => {
         <View style={styles.iconContainer}>
           <AccountIcon style={styles.icon} />
         </View>
-        <Text style={styles.text}>Account</Text>
+        <Text style={styles.text}>Akun</Text>
       </TouchableOpacity>
     </View>
   );
@@ -65,11 +80,11 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: '25%',
+    width: '20%',
   },
   iconContainer: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,

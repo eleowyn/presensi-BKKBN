@@ -12,6 +12,7 @@ import {
   Scan,
   UserDetail,
   UserProfile,
+  Report,
 } from './src/pages';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
@@ -26,13 +27,13 @@ const App = () => {
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen
-          name="SplashScreen"
-          component={SplashScreen}
+          name="Login"
+          component={Login}
           options={{headerShown: false}}
         />
         <Stack.Screen
-          name="Login"
-          component={Login}
+          name="SplashScreen"
+          component={SplashScreen}
           options={{headerShown: false}}
         />
         <Stack.Screen
@@ -43,6 +44,11 @@ const App = () => {
         <Stack.Screen
           name="Home"
           component={Home}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="Report"
+          component={Report}
           options={{headerShown: false}}
         />
         <Stack.Screen

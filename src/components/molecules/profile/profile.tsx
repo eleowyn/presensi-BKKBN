@@ -1,18 +1,22 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import React from 'react';
 
-const ProfileCard = ({text = "isilah", placeholder = "blabla", loading = false}) => {
+const ProfileCard = ({
+  text = 'isilah',
+  placeholder = 'blabla',
+  loading = false,
+}) => {
   return (
     <View style={styles.container}>
       <View style={styles.cardContainer}>
         <Text style={styles.text}>{text}</Text>
         <Text style={[styles.placeholder, loading && styles.loadingText]}>
-          {loading ? 'Loading...' : placeholder}
+          {loading ? 'Memuat...' : placeholder}
         </Text>
       </View>
     </View>
-  )
-}
+  );
+};
 
 export default ProfileCard;
 
@@ -43,5 +47,5 @@ const styles = StyleSheet.create({
   loadingText: {
     fontStyle: 'italic',
     color: '#999',
-  }
+  },
 });

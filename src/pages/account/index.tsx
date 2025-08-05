@@ -77,10 +77,10 @@ const Account = ({navigation}: {navigation: any}) => {
 
               // If no user data in database, create basic profile from auth
               const fallbackData: UserData = {
-                fullName: user.displayName || 'Unknown User',
-                email: user.email || 'No email',
-                department: 'Not specified',
-                NIP: 'Not specified',
+                fullName: user.displayName || 'Tidak diketahui',
+                email: user.email || 'Tidak diketahui',
+                department: 'Tidak diketahui',
+                NIP: 'Tidak diketahui',
                 startDate: new Date().toISOString(),
               };
 
@@ -99,8 +99,7 @@ const Account = ({navigation}: {navigation: any}) => {
               errorMessage =
                 'Permission denied. Please check your Firebase security rules.';
             } else if (error.code === 'NETWORK_ERROR') {
-              errorMessage =
-                'Network error. Please check your internet connection.';
+              errorMessage = 'Eror jaringan. Periksa kembali jaringan anda.';
             }
 
             setError(errorMessage);
@@ -141,13 +140,13 @@ const Account = ({navigation}: {navigation: any}) => {
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
+    Alert.alert('Keluar', 'Anda yakin ingin keluar?', [
       {
-        text: 'Cancel',
+        text: 'Batal',
         style: 'cancel',
       },
       {
-        text: 'Logout',
+        text: 'Keluar',
         style: 'destructive',
         onPress: async () => {
           try {
@@ -155,8 +154,8 @@ const Account = ({navigation}: {navigation: any}) => {
             await signOut(auth);
 
             showMessage({
-              message: 'Logged Out',
-              description: 'You have been successfully logged out',
+              message: 'Telah Keluar',
+              description: 'Anda berhasil keluar.',
               type: 'success',
               duration: 2000,
             });
@@ -168,8 +167,8 @@ const Account = ({navigation}: {navigation: any}) => {
           } catch (error) {
             console.error('Logout error:', error);
             showMessage({
-              message: 'Logout Error',
-              description: 'Failed to logout. Please try again.',
+              message: 'Kesalahan keluar',
+              description: 'Gagal, coba lagi.',
               type: 'danger',
               duration: 3000,
             });
@@ -203,8 +202,8 @@ const Account = ({navigation}: {navigation: any}) => {
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>Unable to Load Profile</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Button text="Retry" onPress={handleRetry} />
-          <Button text="Logout" onPress={handleLogout} />
+          <Button text="Coba lagi" onPress={handleRetry} />
+          <Button text="Keluar" onPress={handleLogout} />
           {/* This app was created by Eishera A. E. Dahlan & L@na L. L. L0ondah */}
         </View>
       </SafeAreaView>
@@ -216,7 +215,7 @@ const Account = ({navigation}: {navigation: any}) => {
       <ScrollView>
         <View>
           <View>
-            <Header text="Account" />
+            <Header text="Akun" />
           </View>
 
           {error && (
@@ -236,27 +235,27 @@ const Account = ({navigation}: {navigation: any}) => {
                 {getFirstName(userData?.fullName || 'User')}
               </Text>
               <Text style={styles.email}>
-                {userData?.email || 'No email available'}
+                {userData?.email || 'Tidak ada email'}
               </Text>
             </View>
           </View>
 
           <View style={styles.card}>
             <ProfileCard
-              text="Department"
-              placeholder={userData?.department || 'Not specified'}
+              text="Departemen"
+              placeholder={userData?.department || 'Tidak tercantum'}
             />
             <ProfileCard
               text="NIP"
               placeholder={userData?.NIP || 'Not specified'}
             />
             <ProfileCard
-              text="Start Date"
+              text="Tanggal Mulai"
               placeholder={formatDate(userData?.startDate || '')}
             />
           </View>
         </View>
-        <Button text="Log Out" onPress={handleLogout} />
+        <Button text="Keluar" onPress={handleLogout} />
       </ScrollView>
       <View style={{marginBottom: 150}}></View>
       <Buttonnavigation navigation={navigation} />
